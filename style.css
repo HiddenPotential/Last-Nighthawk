@@ -169,6 +169,20 @@ html, body {
   #bar button { padding: 9px 12px; }
 }
 
+/* phones: the orb bar is too wide for one row, so the sliders drop to a second row */
+@media (max-width: 640px) {
+  #bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 2px;
+    border-radius: 26px;
+    width: calc(100% - 32px);
+  }
+  #bar .size { order: 1; flex: 1 1 40%; min-width: 0; padding: 4px 8px 2px; }
+  #bar .size input[type="range"] { flex: 1; min-width: 0; width: auto; }
+  #bar #auto-speed-wrap { margin-left: 0; }
+}
+
 @media (max-width: 520px) {
   .bar input[type="range"] { width: 70px; }
   .bar button { padding: 9px 11px; }
