@@ -21,7 +21,11 @@
     { name: "Sunset", bg: ["#33122f", "#0a0410"], orbs: ["#ff9a76", "#ffcf6e", "#ff6f91", "#c86bfa", "#ffd6a5"], swatch: "conic-gradient(#ff9a76,#ffcf6e,#ff6f91,#c86bfa,#ff9a76)" },
     { name: "Ocean", bg: ["#07324a", "#010a12"], orbs: ["#4cc9f0", "#4895ef", "#56cfe1", "#72efdd", "#a9def9"], swatch: "conic-gradient(#4cc9f0,#4895ef,#72efdd,#a9def9,#4cc9f0)" },
     { name: "Candy", bg: ["#2a1c45", "#0a0612"], orbs: ["#ffadad", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff", "#a0c4ff", "#bdb2ff", "#ffc6ff"], swatch: "conic-gradient(#ffadad,#fdffb6,#9bf6ff,#bdb2ff,#ffadad)" },
-    { name: "Pearl", bg: ["#1d1d26", "#050507"], orbs: ["#f4f4f8", "#d2d4de", "#a9abb8", "#ece4d6"], swatch: "conic-gradient(#f4f4f8,#a9abb8,#ece4d6,#f4f4f8)" },
+    { name: "Pearl", bg: ["#1d1d26", "#050507"], orbs: ["#f4f4f8", "#d2d4de", "#a9abb8", "#ece4d6"], swatch: "conic-gradient(#f4f4f8,#a9abb8,#ece4d6,#f4f4f8)", film: 0.32 },
+    { name: "Prism", bg: ["#16163a", "#04040c"], orbs: ["#ff5e7e", "#ffa95e", "#ffe45e", "#6bff9e", "#5ed4ff", "#7b8bff", "#d47bff"], swatch: "conic-gradient(#ff5e7e,#ffe45e,#6bff9e,#5ed4ff,#d47bff,#ff5e7e)", film: 0.22 },
+    { name: "Neon", bg: ["#220b40", "#05010d"], orbs: ["#ff2fd1", "#2fffe1", "#fffb2f", "#8a3bff", "#2f8bff", "#ff6a3d"], swatch: "conic-gradient(#ff2fd1,#fffb2f,#2fffe1,#8a3bff,#ff2fd1)", film: 0.16 },
+    { name: "Forest", bg: ["#0d2c20", "#020a06"], orbs: ["#9be564", "#d7f75b", "#4fd1a1", "#f4c95d", "#7fb069", "#b5e48c"], swatch: "conic-gradient(#9be564,#d7f75b,#f4c95d,#4fd1a1,#9be564)", film: 0.1 },
+    { name: "Galaxy", bg: ["#1c0b42", "#030010"], orbs: ["#ff7ad9", "#8c7bff", "#4de1ff", "#ffd36e", "#c2f0ff", "#b388ff"], swatch: "conic-gradient(#ff7ad9,#8c7bff,#4de1ff,#ffd36e,#ff7ad9)", film: 0.2 },
   ];
   const MODES = [
     { id: "float", label: "Float", ico: "◌" },
@@ -30,13 +34,16 @@
     { id: "shapes", label: "Shapes", ico: "✧" },
   ];
 
-  const settings = { theme: 0, mode: 0, sound: true, size: 1, auto: false, autoSpeed: 0.35 };
+  const settings = { theme: 0, mode: 0, sound: true, size: 1, auto: false, autoSpeed: 0.35, music: true };
   try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (_) { /* storage unavailable */ }
   settings.theme = clamp(settings.theme | 0, 0, THEMES.length - 1);
   settings.mode = clamp(settings.mode | 0, 0, MODES.length - 1);
   settings.size = clamp(+settings.size || 1, 0.5, 2);
   settings.auto = !!settings.auto;
+  settings.music = settings.music !== false;
+  settings.track = ["lofi", "dream", "space", "rain", "musicbox", "waves", "jazz"].includes(settings.track) ? settings.track : "lofi";
   settings.autoSpeed = clamp(settings.autoSpeed ?? 0.35, 0, 1);
+  const here = () => (document.body.dataset.place || "orbs") === "orbs";
   const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (_) { /* ignore */ } };
 
   // ---------- Color ----------
@@ -78,6 +85,7 @@
       master.gain.setTargetAtTime(0.9, ac.currentTime, 0.1);
       startPad();
       startLoops();
+      startMusic();
     } catch (_) { ac = null; }
   }
 
@@ -379,6 +387,716 @@
     syncUi();
   }
 
+  // ---------- Background music ----------
+  // Seven generative pieces, all in C major / A minor so they always blend with the orb chimes.
+  // Each one writes itself as it plays: chords cycle through a few progressions, melodies are short
+  // motifs that repeat with small variations, and parts drop in and out across 8- and 16-bar sections.
+  const midi = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  const PENTA_MIDI = [60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84]; // C major pentatonic, C4..C6
+  // each chord is [bass, ...voicing] in MIDI note numbers
+  const TRACKS = {
+    lofi: {
+      label: "Lo-fi", bpm: 74, chordBars: 1, swing: 0.58, level: 0.8, verb: 0.3, warmth: 4600,
+      progs: [
+        [[41, 52, 57, 60, 64], [40, 50, 55, 59, 62], [38, 53, 57, 60, 64], [36, 52, 55, 59, 62]], // Fmaj7 Em7 Dm9 Cmaj9
+        [[45, 55, 59, 60, 64], [38, 53, 57, 60, 64], [43, 53, 57, 59, 64], [36, 52, 55, 59, 64]], // Am9 Dm9 G13 Cmaj7
+      ],
+    },
+    dream: {
+      label: "Dream", bpm: 66, chordBars: 2, swing: 0.5, level: 0.75, verb: 0.75, warmth: 8000,
+      progs: [
+        [[36, 52, 55, 59, 62], [45, 55, 59, 60, 64], [41, 52, 55, 57, 64], [43, 50, 55, 57, 64]], // Cmaj9 Am9 Fmaj9 G6sus
+        [[41, 52, 57, 60, 64], [43, 50, 55, 59, 64], [40, 50, 55, 59, 62], [45, 52, 55, 60, 64]], // Fmaj7 G6 Em7 Am7
+      ],
+    },
+    space: {
+      label: "Space", bpm: 52, chordBars: 2, swing: 0.5, level: 0.75, verb: 0.95, warmth: 6500,
+      progs: [
+        [[36, 55, 59, 62, 64], [41, 52, 57, 60, 67], [45, 52, 59, 60, 64], [43, 50, 55, 60, 62]], // Cmaj9 Fmaj7 Am(add9) Gsus
+        [[45, 52, 57, 60, 64], [41, 53, 57, 60, 64], [36, 52, 55, 59, 62], [43, 50, 55, 59, 62]], // Am Fmaj7 Cmaj9 G
+      ],
+    },
+    rain: {
+      label: "Rain", bpm: 62, chordBars: 2, swing: 0.5, level: 0.85, verb: 0.6, warmth: 6000, density: 0.5, ambience: "rain",
+      progs: [
+        [[45, 52, 55, 60, 64], [41, 52, 57, 60, 64], [36, 52, 55, 59, 64], [43, 50, 55, 59, 64]], // Am7 Fmaj7 Cmaj7 G6
+        [[38, 53, 57, 60, 64], [45, 52, 55, 60, 64], [40, 50, 55, 59, 62], [41, 52, 57, 60, 64]], // Dm7 Am7 Em7 Fmaj7
+      ],
+    },
+    musicbox: {
+      label: "Music box", bpm: 92, beats: 3, chordBars: 1, swing: 0.5, level: 0.75, verb: 0.55, warmth: 9000, density: 0.7,
+      progs: [
+        [[36, 52, 55, 60, 64], [43, 50, 55, 59, 62], [45, 52, 57, 60, 64], [41, 53, 57, 60, 65]], // C G Am F
+        [[41, 53, 57, 60, 65], [36, 52, 55, 60, 64], [43, 50, 55, 59, 62], [36, 52, 55, 60, 67]], // F C G C
+      ],
+    },
+    waves: {
+      label: "Waves", bpm: 58, chordBars: 2, swing: 0.5, level: 0.85, verb: 0.65, warmth: 5500, density: 0.5, ambience: "waves",
+      progs: [
+        [[36, 52, 55, 60, 64], [41, 53, 57, 60, 64], [45, 52, 57, 60, 64], [43, 50, 55, 59, 62]], // C Fmaj7 Am G
+        [[45, 52, 57, 60, 64], [43, 50, 55, 59, 62], [41, 52, 57, 60, 64], [36, 52, 55, 59, 62]], // Am G Fmaj7 Cmaj9
+      ],
+    },
+    jazz: {
+      label: "Night jazz", bpm: 84, chordBars: 1, swing: 0.66, level: 0.85, verb: 0.4, warmth: 5200, density: 0.55,
+      progs: [
+        [[38, 53, 57, 60, 64], [43, 53, 57, 59, 64], [36, 52, 55, 59, 62], [45, 55, 59, 60, 64]], // Dm9 G13 Cmaj9 Am9
+        [[41, 52, 55, 57, 64], [40, 50, 55, 59, 62], [38, 53, 57, 60, 64], [43, 53, 57, 59, 64]], // Fmaj9 Em7 Dm9 G13
+      ],
+    },
+  };
+  const TRACK_ORDER = ["lofi", "dream", "space", "rain", "musicbox", "waves", "jazz"];
+  const music = {
+    track: null, out: null, duck: null, drums: null, echo: null, stoppers: [],
+    step: 0, nextStep: 0, prog: 0, cycle: -1, motif: null, motifB: null, arp: 0, timer: 0,
+  };
+
+  function startMusic() {
+    if (!ac) return;
+    if (!music.timer) music.timer = setInterval(scheduleMusic, 100);
+    if (settings.music && music.track !== settings.track) switchTrack(settings.track);
+    duckDrone();
+  }
+
+  function duckDrone() {
+    if (pad) pad.g.gain.setTargetAtTime(settings.music ? 0.008 : 0.028, ac.currentTime, 1.5);
+  }
+
+  // build a fresh signal chain for a piece and crossfade from the previous one
+  function switchTrack(name) {
+    const t = ac.currentTime;
+    if (music.out) {
+      const old = music.out, stop = music.stoppers;
+      old.gain.cancelScheduledValues(t);
+      old.gain.setTargetAtTime(0, t, 0.8);
+      setTimeout(() => { for (const n of stop) try { n.stop(); } catch (_) { /* already stopped */ } try { old.disconnect(); } catch (_) { /* gone */ } }, 6000);
+    }
+    const tr = TRACKS[name];
+    const out = ac.createGain();
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(settings.music ? tr.level : 0, t + 3);
+    out.connect(master);
+    const send = ac.createGain();
+    send.gain.value = tr.verb;
+    out.connect(send).connect(verb);
+
+    const warm = ac.createBiquadFilter();
+    warm.type = "lowpass";
+    warm.frequency.value = tr.warmth;
+    warm.Q.value = 0.5;
+    const stoppers = [];
+    let tail = warm;
+    if (name === "lofi") {
+      // tape wow: a tiny delay line whose length wobbles bends the pitch ever so slightly
+      const wow = ac.createDelay(0.05), lfo = ac.createOscillator(), amt = ac.createGain();
+      wow.delayTime.value = 0.012;
+      lfo.frequency.value = 0.55;
+      amt.gain.value = 0.0015;
+      lfo.connect(amt).connect(wow.delayTime);
+      lfo.start(t);
+      stoppers.push(lfo);
+      warm.connect(wow);
+      tail = wow;
+    }
+    tail.connect(out);
+
+    const mix = ac.createGain();
+    mix.connect(warm);
+    const duck = ac.createGain(); // tonal parts dip gently under each kick
+    duck.connect(mix);
+    const drums = ac.createGain();
+    drums.connect(mix);
+    const echo = ac.createDelay(2), fb = ac.createGain(), tone = ac.createBiquadFilter();
+    echo.delayTime.value = (60 / tr.bpm) * 0.75; // dotted eighth
+    fb.gain.value = 0.34;
+    tone.type = "lowpass";
+    tone.frequency.value = 2600;
+    echo.connect(tone).connect(fb).connect(echo);
+    tone.connect(mix);
+    if (name === "lofi") stoppers.push(crackle(mix));
+    if (tr.ambience === "rain") stoppers.push(...rainBed(mix));
+    if (tr.ambience === "waves") stoppers.push(...wavesBed(mix));
+
+    Object.assign(music, { track: name, out, duck, drums, echo, stoppers, step: 0, nextStep: t + 0.3, cycle: -1, prog: 0, arp: 0 });
+  }
+
+  // vinyl crackle: sparse clicks over a whisper of hiss
+  function crackle(dest) {
+    const len = ac.sampleRate * 4, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * 0.012;
+      if (Math.random() < 0.0003) d[i] += (Math.random() < 0.5 ? -1 : 1) * rand(0.2, 0.9);
+    }
+    const src = ac.createBufferSource(), hp = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = buf;
+    src.loop = true;
+    hp.type = "highpass";
+    hp.frequency.value = 1400;
+    g.gain.value = 0.05;
+    src.connect(hp).connect(g).connect(dest);
+    src.start();
+    return src;
+  }
+
+  function scheduleMusic() {
+    if (!ac || !music.out) return;
+    const now = ac.currentTime;
+    if (!settings.music || !settings.sound || ac.state !== "running") { music.nextStep = now + 0.2; return; }
+    const tr = TRACKS[music.track], sd = 60 / tr.bpm / 4, ahead = now + 1.2;
+    while (music.nextStep < ahead) {
+      const swing = music.step % 2 ? (tr.swing - 0.5) * 2 * sd : 0;
+      playStep(tr, music.nextStep + swing, music.step, sd);
+      music.step++;
+      music.nextStep += sd;
+    }
+  }
+
+  // a two-bar melody on the pentatonic scale, plus a slightly varied answer
+  function makeMotif(density, len = 32) {
+    const notes = new Map();
+    let s = 0, deg = 3 + ((Math.random() * 3) | 0), last = null;
+    while (s < len) {
+      const dur = [2, 2, 3, 4, 4, 6, 8][(Math.random() * 7) | 0];
+      if (Math.random() < density) {
+        deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2][(Math.random() * 7) | 0], 0, PENTA_MIDI.length - 1);
+        last = { deg, dur: Math.min(dur, len - s) };
+        notes.set(s, last);
+      }
+      s += dur;
+    }
+    if (last) last.deg = [2, 3, 5, 7][(Math.random() * 4) | 0]; // settle on E, G, C or E
+    const answer = new Map();
+    for (const [k, n] of notes) answer.set(k, { ...n, deg: Math.random() < 0.25 ? clamp(n.deg + (Math.random() < 0.5 ? -1 : 1), 0, PENTA_MIDI.length - 1) : n.deg });
+    if (last) { const keys = [...answer.keys()]; answer.get(keys[keys.length - 1]).deg = 5; } // the answer comes home to C
+    return [notes, answer];
+  }
+
+  function playStep(tr, t, step, sd) {
+    const spb = (tr.beats || 4) * 4; // sixteenth steps per bar
+    const s = step % spb, bar = Math.floor(step / spb), beat = sd * 4;
+    const cycle = Math.floor(bar / (4 * tr.chordBars));
+    if (cycle !== music.cycle) {
+      music.cycle = cycle;
+      if (cycle > 0 && Math.random() < 0.5) music.prog = (Math.random() * tr.progs.length) | 0;
+      [music.motif, music.motifB] = makeMotif(tr.density || 0.62, spb * 2);
+    }
+    const ci = Math.floor(bar / tr.chordBars) % 4;
+    const prog = tr.progs[music.prog];
+    const pb = bar % 8;
+    PLAYERS[music.track]({
+      t, s, bar, beat, sd, spb, pb,
+      chord: prog[ci],
+      next: prog[(ci + 1) % 4],
+      chordStart: s === 0 && bar % tr.chordBars === 0,
+      chordLen: beat * (tr.beats || 4) * tr.chordBars,
+      melody(bars) {
+        if (!bars.includes(pb)) return null;
+        const m = pb >= 4 ? music.motifB : music.motif;
+        return m.get((pb % 2) * spb + s) || null;
+      },
+    });
+  }
+
+  const PLAYERS = {
+    lofi({ t, s, bar, beat, sd, chord, chordStart, melody }) {
+      const intro = bar < 2, breakdown = bar % 16 >= 14;
+      if (chordStart) strum(chord.slice(1), t, 0.85, beat * 3.6);
+      if (s === 10 && Math.random() < 0.4) strum(chord.slice(2), t, 0.45, beat * 1.4);
+      if (!intro) {
+        if (s === 0) bassNote(midi(chord[0]), t, beat * 1.8, 0.9);
+        if (s === 10 && Math.random() < 0.7) bassNote(midi(chord[0] + (Math.random() < 0.5 ? 7 : 12)), t, beat * 1.1, 0.6);
+        if (s === 14 && Math.random() < 0.3) bassNote(midi(chord[0] + 2), t, beat * 0.4, 0.45);
+      }
+      if (!intro && !breakdown) {
+        if (s === 0 || s === 10 || (s === 7 && Math.random() < 0.3)) kick(t, s === 0 ? 1 : 0.75);
+        if (s === 4 || s === 12) snare(t, 0.9);
+        if (s % 2 === 0) hat(t, s % 4 === 0 ? 0.5 : 0.85);
+        else if (Math.random() < 0.15) hat(t, 0.3);
+      }
+      const n = bar >= 2 && melody([2, 3, 6, 7]);
+      if (n) softPluck(midi(PENTA_MIDI[n.deg] + 12), t, 0.75, n.dur * sd);
+    },
+
+    dream({ t, s, bar, chord, chordStart, chordLen, melody }) {
+      if (chordStart) {
+        padChord(chord.slice(1), t, chordLen + 0.8, 0.9, 1.8);
+        bassNote(midi(chord[0]), t, chordLen, 0.6);
+      }
+      // kalimba arpeggio on eighths, rising then falling, skipping the odd note
+      if (s % 2 === 0 && bar >= 1 && Math.random() < 0.88) {
+        const tones = [...chord.slice(1).map((m) => m + 12), chord[2] + 24];
+        const cycleLen = tones.length * 2 - 2;
+        const i = music.arp++ % cycleLen, k = i < tones.length ? i : cycleLen - i;
+        kalimba(midi(tones[k]), t, s % 8 === 0 ? 0.6 : 0.42, false);
+      }
+      const n = melody([4, 5, 6, 7]);
+      if (n) kalimba(midi(PENTA_MIDI[n.deg] + 12), t, 0.85, true);
+    },
+
+    space({ t, s, beat, sd, chord, chordStart, chordLen, melody }) {
+      if (chordStart) {
+        padChord(chord.slice(1), t, chordLen + 1.5, 1, 3.5);
+        bassNote(midi(chord[0] - 12), t, chordLen + 0.5, 0.75);
+        chord.slice(2).forEach((m, k) => glassBell(midi(m + 24), t + beat * (2 + k * 0.5), 0.5));
+      }
+      if (s % 4 === 0 && Math.random() < 0.18) epiano(midi(PENTA_MIDI[(Math.random() * PENTA_MIDI.length) | 0]), t, 0.4, beat * 2, true);
+      const n = melody([2, 3, 6, 7]);
+      if (n) epiano(midi(PENTA_MIDI[n.deg] + 12), t, 0.7, n.dur * sd, true);
+    },
+
+    // soft piano: a rolled chord, a quiet broken-chord accompaniment, and a melody over the rain
+    rain({ t, s, bar, sd, chord, chordStart, chordLen, melody }) {
+      if (chordStart) {
+        piano(midi(chord[0]), t, 0.55, chordLen);
+        chord.slice(1).forEach((m, i) => piano(midi(m), t + 0.05 + i * 0.06, 0.38, chordLen * 0.9));
+      }
+      if (s % 2 === 0 && s !== 0 && Math.random() < 0.6) {
+        const v = chord.slice(1);
+        piano(midi(v[(s / 2 + bar) % v.length]), t, 0.22, sd * 6);
+      }
+      const n = melody([2, 3, 6, 7]);
+      if (n) piano(midi(PENTA_MIDI[n.deg] + 12), t, 0.62, n.dur * sd + 0.4, true);
+    },
+
+    // a lullaby in 3/4: low note on one, a two-note "pah-pah", and a tinkling tune
+    musicbox({ t, s, chord, melody }) {
+      if (s === 0) musicBox(midi(chord[0] + 24), t, 0.6);
+      if (s === 4 || s === 8) {
+        musicBox(midi(chord[2] + 12), t, 0.32);
+        musicBox(midi(chord[3] + 12), t + 0.012, 0.28);
+      }
+      const n = melody([0, 1, 2, 3, 4, 5, 6, 7]);
+      if (n) musicBox(midi(PENTA_MIDI[n.deg] + 12), t, 0.7);
+      if (s === 10 && Math.random() < 0.15) musicBox(midi(PENTA_MIDI[8 + ((Math.random() * 3) | 0)] + 12), t, 0.25);
+    },
+
+    // fingerpicked guitar and a breathy flute over the sea
+    waves({ t, s, sd, chord, chordStart, chordLen, melody }) {
+      if (chordStart) {
+        padChord(chord.slice(1), t, chordLen + 1, 0.5, 2.5);
+        bassNote(midi(chord[0]), t, chordLen, 0.5);
+      }
+      if (s % 2 === 0) {
+        const tones = [chord[0] + 12, chord[2], chord[3], chord[4]];
+        const pick = [0, 2, 1, 3, 0, 2, 1, 3][(s / 2) % 8];
+        guitar(midi(tones[pick]), t + rand(0, 0.01), pick === 0 ? 0.6 : 0.45);
+      }
+      const n = melody([4, 5, 6, 7]);
+      if (n) flute(midi(PENTA_MIDI[n.deg] + 12), t, n.dur * sd, 0.7);
+    },
+
+    // swing: brushes and ride, a walking bass, electric-piano comping and a vibraphone tune
+    jazz({ t, s, bar, beat, sd, chord, next, chordStart, melody }) {
+      // ride: ding, ding-da-ding (the swing shifts the "da" late)
+      if (s === 0 || s === 4 || s === 8 || s === 12) ride(t, s % 8 === 4 ? 0.9 : 0.7);
+      if ((s === 6 || s === 14) && Math.random() < 0.85) ride(t, 0.45);
+      if (s === 4 || s === 12) brush(t, 0.8);
+      if (s === 0 || s === 8) kick(t, 0.18);
+      // walking bass: root, a chord tone, the fifth, then a half step into the next chord
+      if (s % 4 === 0) {
+        const root = chord[0], ivs = chord.slice(1).map((m) => (((m - root) % 12) + 12) % 12);
+        const third = ivs.includes(3) ? 3 : ivs.includes(4) ? 4 : 2;
+        const line = [root, root + third, root + 7, next[0] + (Math.random() < 0.5 ? -1 : 1)];
+        let m = line[s / 4];
+        while (m > 50) m -= 12;
+        while (m < 33) m += 12;
+        bassNote(midi(m), t, beat * 0.9, 0.85);
+      }
+      if ((s === 6 && Math.random() < 0.6) || (s === 14 && Math.random() < 0.35) || (chordStart && Math.random() < 0.3)) {
+        strum(chord.slice(1), t, 0.55, beat * 0.7);
+      }
+      const n = bar >= 1 && melody([2, 3, 6, 7]);
+      if (n) vibes(midi(PENTA_MIDI[n.deg] + 12), t, 0.7, true);
+    },
+  };
+
+  // --- instruments ---
+  // piano: a handful of partials, the higher ones dying away first
+  function piano(f, t, vel, dur, echo = false) {
+    const g = ac.createGain();
+    route(g, echo);
+    const len = clamp(3.2 - Math.log2(f / 130) * 0.6, 0.9, 3.5);
+    for (const [mult, v] of [[1, 1], [2, 0.42], [3, 0.16], [4, 0.09], [5.02, 0.04]]) {
+      const o = ac.createOscillator(), og = ac.createGain(), dk = len / mult ** 0.6;
+      o.frequency.value = f * mult;
+      og.gain.setValueAtTime(0, t);
+      og.gain.linearRampToValueAtTime(0.045 * vel * v, t + 0.004);
+      og.gain.exponentialRampToValueAtTime(0.018 * vel * v, t + 0.25);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dk, dur + 0.6));
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dk + 0.05);
+    }
+  }
+
+  // music box: a bright tine with quick metallic overtones
+  function musicBox(f, t, vel) {
+    const g = ac.createGain();
+    route(g, true);
+    for (const [mult, v, dk] of [[1, 1, 1.6], [3, 0.22, 0.5], [5.6, 0.1, 0.18]]) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = f * mult;
+      og.gain.setValueAtTime(0, t);
+      og.gain.linearRampToValueAtTime(0.05 * vel * v, t + 0.002);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + dk);
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dk + 0.05);
+    }
+  }
+
+  // vibraphone: soft bars with a slow tremolo
+  function vibes(f, t, vel, echo) {
+    const g = ac.createGain(), trem = ac.createGain(), lfo = ac.createOscillator(), depth = ac.createGain();
+    trem.gain.value = 0.75;
+    lfo.frequency.value = 5;
+    depth.gain.value = 0.25;
+    lfo.connect(depth).connect(trem.gain);
+    g.connect(trem);
+    route(trem, echo);
+    for (const [mult, v, dk] of [[1, 1, 2.2], [4, 0.16, 0.45]]) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = f * mult;
+      og.gain.setValueAtTime(0, t);
+      og.gain.linearRampToValueAtTime(0.05 * vel * v, t + 0.005);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + dk);
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dk + 0.05);
+    }
+    lfo.start(t);
+    lfo.stop(t + 2.3);
+  }
+
+  // flute: a sine with delayed vibrato and a little breath noise
+  function flute(f, t, dur, vel) {
+    const o = ac.createOscillator(), g = ac.createGain(), vib = ac.createOscillator(), vibAmt = ac.createGain();
+    o.frequency.value = f;
+    vib.frequency.value = 5.2;
+    vibAmt.gain.setValueAtTime(0, t);
+    vibAmt.gain.linearRampToValueAtTime(f * 0.005, t + 0.35);
+    vib.connect(vibAmt).connect(o.frequency);
+    const len = Math.max(0.3, dur);
+    const peak = 0.04 * vel;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.08);
+    g.gain.setValueAtTime(peak * 0.85, t + len);
+    g.gain.linearRampToValueAtTime(0, t + len + 0.25);
+    o.connect(g);
+    const n = noise(), bp = ac.createBiquadFilter(), ng = ac.createGain();
+    bp.type = "bandpass";
+    bp.frequency.value = f * 2;
+    bp.Q.value = 3;
+    ng.gain.value = 0.18;
+    n.connect(bp).connect(ng).connect(g);
+    route(g, true);
+    for (const x of [o, vib, n]) { x.start(t); x.stop(t + len + 0.3); }
+  }
+
+  // nylon-ish guitar pluck: a saw through a filter that closes quickly, plus a round body
+  function guitar(f, t, vel) {
+    const o = ac.createOscillator(), body = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = "sawtooth";
+    o.frequency.value = f;
+    body.frequency.value = f;
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(2600, t);
+    lp.frequency.exponentialRampToValueAtTime(500, t + 0.35);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.035 * vel, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+    const bg = ac.createGain();
+    bg.gain.value = 0.6;
+    o.connect(lp).connect(g);
+    body.connect(bg).connect(g);
+    route(g, false);
+    for (const x of [o, body]) { x.start(t); x.stop(t + 1.9); }
+  }
+
+  // ride cymbal: bright noise and two clangy partials
+  function ride(t, vel) {
+    const n = noise(), hp = ac.createBiquadFilter(), g = ac.createGain();
+    hp.type = "highpass";
+    hp.frequency.value = 5200;
+    g.gain.setValueAtTime(0.02 * vel, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    n.connect(hp).connect(g).connect(music.drums);
+    n.start(t);
+    n.stop(t + 0.6);
+    for (const fr of [3150, 4730]) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = "square";
+      o.frequency.value = fr;
+      og.gain.setValueAtTime(0.0025 * vel, t);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      o.connect(og).connect(hp);
+      o.start(t);
+      o.stop(t + 0.45);
+    }
+  }
+
+  // brush on the snare: a short swish rather than a hit
+  function brush(t, vel) {
+    const n = noise(), bp = ac.createBiquadFilter(), g = ac.createGain();
+    bp.type = "bandpass";
+    bp.frequency.value = 3000;
+    bp.Q.value = 0.6;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05 * vel, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    n.connect(bp).connect(g).connect(music.drums);
+    n.start(t);
+    n.stop(t + 0.3);
+  }
+
+  // --- ambience beds ---
+  function rainBed(dest) {
+    const out = [];
+    for (const [type, freq, vol] of [["lowpass", 1700, 0.06], ["highpass", 5200, 0.018]]) {
+      const n = noise(), f = ac.createBiquadFilter(), g = ac.createGain();
+      f.type = type;
+      f.frequency.value = freq;
+      g.gain.value = vol;
+      n.connect(f).connect(g).connect(dest);
+      n.start();
+      out.push(n);
+    }
+    return out;
+  }
+
+  function wavesBed(dest) {
+    const n = noise(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    lp.type = "lowpass";
+    lp.frequency.value = 750;
+    g.gain.value = 0.045;
+    // one slow swell drives both brightness and loudness, like waves rolling in
+    const lfo = ac.createOscillator(), cut = ac.createGain(), amp = ac.createGain();
+    lfo.frequency.value = 0.085;
+    cut.gain.value = 480;
+    amp.gain.value = 0.035;
+    lfo.connect(cut).connect(lp.frequency);
+    lfo.connect(amp).connect(g.gain);
+    n.connect(lp).connect(g).connect(dest);
+    n.start();
+    lfo.start();
+    return [n, lfo];
+  }
+
+  function route(g, echo) {
+    g.connect(music.duck);
+    if (echo) g.connect(music.echo);
+  }
+
+  // electric piano: two-operator FM with a short bright "tine" on the attack
+  function epiano(f, t, vel, dur, echo = false) {
+    const g = ac.createGain(), car = ac.createOscillator(), mod = ac.createOscillator(), mg = ac.createGain();
+    car.frequency.value = f;
+    mod.frequency.value = f;
+    mg.gain.setValueAtTime(f * 1.1 * vel, t);
+    mg.gain.exponentialRampToValueAtTime(f * 0.08 + 1, t + 0.9);
+    mod.connect(mg).connect(car.frequency);
+    const tine = ac.createOscillator(), tg = ac.createGain();
+    tine.frequency.value = f * 4.01;
+    tg.gain.setValueAtTime(0.16 * vel, t);
+    tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    tine.connect(tg).connect(g);
+    car.connect(g);
+    const peak = 0.05 * vel;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(peak * 0.35, t + 0.7);
+    g.gain.setTargetAtTime(0.0001, t + Math.max(0.3, dur), 0.25);
+    route(g, echo);
+    const end = t + dur + 1.6;
+    for (const o of [car, mod, tine]) { o.start(t); o.stop(end); }
+  }
+
+  function strum(notes, t, vel, dur) {
+    notes.forEach((m, i) => epiano(midi(m), t + i * 0.018 + rand(0, 0.006), vel * rand(0.85, 1), dur));
+  }
+
+  // kalimba: a sine with faint inharmonic overtones and a quick decay
+  function kalimba(f, t, vel, echo) {
+    const g = ac.createGain();
+    route(g, echo);
+    for (const [mult, v, dk] of [[1, 1, 1.4], [2, 0.08, 0.35], [5.4, 0.12, 0.12]]) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = f * mult;
+      og.gain.setValueAtTime(0, t);
+      og.gain.linearRampToValueAtTime(0.045 * vel * v, t + 0.004);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + dk);
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dk + 0.05);
+    }
+  }
+
+  // soft plucked lead: triangle through a closing filter
+  function softPluck(f, t, vel, dur) {
+    const o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = "triangle";
+    o.frequency.value = f;
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(3200, t);
+    lp.frequency.exponentialRampToValueAtTime(700, t + 0.4);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05 * vel, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.35, dur) + 0.4);
+    o.connect(lp).connect(g);
+    route(g, true);
+    o.start(t);
+    o.stop(t + dur + 0.5);
+  }
+
+  function glassBell(f, t, vel) {
+    const g = ac.createGain();
+    if (ac.createStereoPanner) {
+      const p = ac.createStereoPanner();
+      p.pan.value = rand(-0.7, 0.7);
+      g.connect(p);
+      p.connect(music.duck);
+      p.connect(music.echo);
+    } else route(g, true);
+    for (const [mult, v, dk] of [[1, 1, 2.4], [2.76, 0.3, 1.2], [5.4, 0.1, 0.5]]) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = f * mult;
+      og.gain.setValueAtTime(0, t);
+      og.gain.linearRampToValueAtTime(0.012 * vel * v, t + 0.01);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + dk);
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + dk + 0.05);
+    }
+  }
+
+  // warm pad: detuned saws through a slowly opening filter
+  function padChord(notes, t, dur, vel, attack) {
+    const lp = ac.createBiquadFilter(), g = ac.createGain();
+    lp.type = "lowpass";
+    lp.Q.value = 0.6;
+    lp.frequency.setValueAtTime(450, t);
+    lp.frequency.linearRampToValueAtTime(1150, t + dur * 0.5);
+    lp.frequency.linearRampToValueAtTime(600, t + dur + 2);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vel, t + attack);
+    g.gain.setValueAtTime(vel, t + dur);
+    g.gain.linearRampToValueAtTime(0, t + dur + 2.5);
+    lp.connect(g);
+    route(g, false);
+    for (const m of notes) {
+      for (const det of [-8, 0, 8]) {
+        const o = ac.createOscillator(), og = ac.createGain();
+        o.type = "sawtooth";
+        o.frequency.value = midi(m);
+        o.detune.value = det + rand(-2, 2);
+        og.gain.value = 0.0055;
+        o.connect(og).connect(lp);
+        o.start(t);
+        o.stop(t + dur + 2.6);
+      }
+    }
+  }
+
+  function bassNote(f, t, dur, vel) {
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), o2g = ac.createGain(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    o.frequency.value = f;
+    o2.type = "triangle";
+    o2.frequency.value = f;
+    o2g.gain.value = 0.25;
+    lp.type = "lowpass";
+    lp.frequency.value = 380;
+    const peak = 0.12 * vel;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(peak * 0.6, t + 0.3);
+    g.gain.setTargetAtTime(0.0001, t + dur, 0.12);
+    o.connect(lp);
+    o2.connect(o2g).connect(lp);
+    lp.connect(g);
+    route(g, false);
+    for (const n of [o, o2]) { n.start(t); n.stop(t + dur + 0.8); }
+  }
+
+  function kick(t, vel) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(115, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.12);
+    g.gain.setValueAtTime(0.3 * vel, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    o.connect(g).connect(music.drums);
+    o.start(t);
+    o.stop(t + 0.5);
+    // gentle side-chain breathing on everything tonal
+    music.duck.gain.setValueAtTime(1, t);
+    music.duck.gain.linearRampToValueAtTime(0.62, t + 0.03);
+    music.duck.gain.linearRampToValueAtTime(1, t + 0.32);
+  }
+
+  function snare(t, vel) {
+    const n = noise(), bp = ac.createBiquadFilter(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    bp.type = "bandpass";
+    bp.frequency.value = 1800;
+    bp.Q.value = 0.7;
+    lp.type = "lowpass";
+    lp.frequency.value = 3800;
+    g.gain.setValueAtTime(0.09 * vel, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    n.connect(bp).connect(lp).connect(g).connect(music.drums);
+    n.start(t);
+    n.stop(t + 0.25);
+    const o = ac.createOscillator(), og = ac.createGain();
+    o.type = "triangle";
+    o.frequency.value = 185;
+    og.gain.setValueAtTime(0.045 * vel, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(og).connect(music.drums);
+    o.start(t);
+    o.stop(t + 0.12);
+  }
+
+  function hat(t, vel) {
+    const n = noise(), hp = ac.createBiquadFilter(), g = ac.createGain();
+    hp.type = "highpass";
+    hp.frequency.value = 7500;
+    g.gain.setValueAtTime(0.022 * vel, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    n.connect(hp).connect(g).connect(music.drums);
+    n.start(t);
+    n.stop(t + 0.07);
+  }
+
+  // on/off switch kept as a boolean so other parts of the app can share it
+  function setMusic(on) {
+    settings.music = !!on;
+    saveSettings();
+    if (on) {
+      ensureAudio();
+      if (music.out && music.track === settings.track) music.out.gain.setTargetAtTime(TRACKS[settings.track].level, ac.currentTime, 1);
+    } else if (music.out) music.out.gain.setTargetAtTime(0, ac.currentTime, 0.6);
+    if (ac) duckDrone();
+    syncUi();
+  }
+
+  function setTrack(name) {
+    settings.track = name;
+    saveSettings();
+    if (!settings.music) { setMusic(true); return; }
+    ensureAudio();
+    if (ac && music.track !== name) switchTrack(name);
+    syncUi();
+  }
+
+  // the ♫ button steps through every piece in TRACK_ORDER, then off, then back to the first
+  function nextMusic() {
+    if (!settings.music) { settings.track = TRACK_ORDER[0]; setMusic(true); }
+    else {
+      const i = TRACK_ORDER.indexOf(settings.track);
+      if (i === TRACK_ORDER.length - 1) setMusic(false);
+      else setTrack(TRACK_ORDER[i + 1]);
+    }
+    if (settings.music) caption(TRACKS[settings.track].label.toLowerCase());
+  }
+
   // ---------- 3D space ----------
   // Orbs live in a box: x 0..W, y 0..floor, z 0..D (0 = the glass you look through).
   const FOCAL = 1000;
@@ -408,8 +1126,6 @@
       vx: v[0], vy: v[1], vz: v[2], r, ci, rgb: rgb(list[ci % list.length]),
       born: time, squash: 0, squashV: 0, angle: 0, phase: rand(0, TAU), note: noteFor(r),
       cool: 0, dying: 0, rx: rand(0, TAU), ry: rand(0, TAU), P: null,
-      formA: "round", formB: "round", formT: 1, formNext: time + rand(2, 12),
-      spin: rand(0, TAU), spinV: rand(-0.35, 0.35), turn: rand(0, TAU),
     };
     o.P = proj(o.x, o.y, o.z);
     orbs.push(o);
@@ -437,7 +1153,7 @@
     const n = Math.round(14 + o.r * 0.5);
     for (let k = 0; k < n; k++) {
       const a = rand(0, TAU), sp = rand(50, 230) * (0.5 + o.r / 50) * P.s;
-      particles.push({ x: P.X + Math.cos(a) * R * 0.5, y: P.Y + Math.sin(a) * R * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(0.5, 1.2), age: 0, size: rand(1.2, 3.4) * P.s, rgb: o.rgb });
+      particles.push({ x: P.X + Math.cos(a) * R * 0.5, y: P.Y + Math.sin(a) * R * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(0.5, 1.2), age: 0, size: rand(1.2, 3.4) * P.s, rgb: Math.random() < 0.5 ? o.rgb : rgb(theme().orbs[(Math.random() * theme().orbs.length) | 0]) });
     }
     rings.push({ x: P.X, y: P.Y, r: R, rgb: o.rgb, age: 0 });
 
@@ -568,13 +1284,54 @@
   // auto speed slider 0..1 maps to 0.2..5 orbs per second on a log scale
   const autoInterval = () => 1 / (0.2 * Math.pow(25, settings.autoSpeed));
 
+  // Auto orbs are temporary: they only arrive while there's room and pop on their own after a while.
+  // Orbs you make yourself are never removed.
+  const AUTO_COVER_SPAWN = 0.22; // stop adding orbs once they cover this much of the screen
+  const AUTO_COVER_MAX = 0.3; // past this, the oldest auto orbs pop to make room
+  const AUTO_MAX = 60;
+  const AUTO_LIFE = [18, 40]; // seconds
+  const WARN_TIME = 1.2; // wobble before popping
+
+  // share of the screen covered by orbs (overlaps counted twice, which is fine as a crowding gauge)
+  function coverage() {
+    let a = 0;
+    for (const o of orbs) if (!o.dying && o.P) a += Math.PI * (o.r * o.P.s) ** 2;
+    return a / Math.max(1, W * H);
+  }
+
   function autoSpawn() {
+    if (orbs.filter((o) => !o.dying).length >= AUTO_MAX || coverage() >= AUTO_COVER_SPAWN) return;
     const r = rand(14, 44);
     const falling = MODES[settings.mode].id === "fall";
     const x = rand(r, W - r);
     const o = makeOrb(x, falling ? r : rand(r, floorY() - r), rand(r, D - r), r);
+    o.auto = true;
+    o.life = rand(AUTO_LIFE[0], AUTO_LIFE[1]);
     if (falling) o.vy = rand(0, 60);
     bloop(o.r, x, true, 0.9);
+  }
+
+  let autoCareTimer = 0;
+  function tendAutoOrbs(dt) {
+    const free = (o) => o.auto && !o.dying && o !== drag.orb && !(o.home && formHolding());
+    // a little shiver just before an orb's time is up
+    for (const o of orbs) {
+      if (!free(o)) continue;
+      const left = o.life - (time - o.born);
+      if (left > 0 && left < WARN_TIME) o.squashV += Math.sin(time * 24 + o.phase) * 30 * dt;
+    }
+    autoCareTimer -= dt;
+    if (autoCareTimer > 0) return;
+    autoCareTimer = 0.2;
+    const autos = orbs.filter(free);
+    if (!autos.length) return;
+    let victim = null;
+    if (coverage() > AUTO_COVER_MAX) victim = autos.reduce((a, b) => (a.born < b.born ? a : b));
+    else victim = autos.find((o) => time - o.born > o.life);
+    if (victim) {
+      popOrb(victim, false);
+      autoCareTimer = 0.35; // stagger pops so they never all go at once
+    }
   }
   const SHAPE_SCALE = { galaxy: 1.55, wave: 1.4, donut: 1.25, saturn: 1.2, infinity: 1.25, atom: 1.45 };
   const form = { phase: "idle", t: 0, idx: -1, name: "", spin: 0, tilt: 0, scale: 1 };
@@ -768,8 +1525,6 @@
       }
       if (best) { best.home = h; free.delete(best); }
     }
-    const match = FORM_FOR_SHAPE[form.name] || "round";
-    for (const o of orbs) if (o.home) morphTo(o, match, rand(0, 0.9));
     caption(form.name);
     swell();
   }
@@ -1005,17 +1760,6 @@
     const pvx = (ptr.x - ptr.lx) / dt, pvy = (ptr.y - ptr.ly) / dt;
     updateForm(dt);
 
-    // each orb morphs between forms on its own clock
-    for (const o of orbs) {
-      if (o.formT < 1) o.formT = Math.min(1, o.formT + dt / MORPH_TIME);
-      else if (time > o.formNext && !(o.home && formHolding())) {
-        morphTo(o, pickForm(o.formB));
-        morphSound(o);
-      }
-      o.spin += o.spinV * dt;
-      o.turn += dt * 0.6;
-    }
-
     // ease every orb toward its target size
     const cap = maxR();
     for (const o of orbs) {
@@ -1039,6 +1783,8 @@
         plipTimer = rand(2.5, 7);
       }
     }
+
+    tendAutoOrbs(dt);
 
     // auto mode: new orbs drift in on their own
     if (settings.auto) {
@@ -1145,6 +1891,23 @@
     wg.addColorStop(1, css(accent, 0));
     ctx.fillStyle = wg;
     ctx.fillRect(b[0].X, b[0].Y, b[1].X - b[0].X, b[2].Y - b[0].Y);
+
+    // coloured light pools that wander slowly over the walls and floor
+    const pal = theme().orbs;
+    ctx.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 3; k++) {
+      const col = rgb(pal[(k * 2 + 1) % pal.length]);
+      const x = W * (0.5 + 0.38 * Math.sin(time * 0.045 + k * 2.1));
+      const y = H * (0.45 + 0.3 * Math.cos(time * 0.037 + k * 1.7));
+      const rr = Math.max(W, H) * (0.32 + 0.06 * Math.sin(time * 0.1 + k));
+      const lg = ctx.createRadialGradient(x, y, 0, x, y, rr);
+      lg.addColorStop(0, css(col, 0.075));
+      lg.addColorStop(0.5, css(col, 0.03));
+      lg.addColorStop(1, css(col, 0));
+      ctx.fillStyle = lg;
+      ctx.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
 
     // floor plane
     const fl = ctx.createLinearGradient(0, b[3].Y, 0, fy);
@@ -1276,93 +2039,9 @@
     ctx.globalCompositeOperation = "source-over";
   }
 
-  // ---------- Orb forms ----------
-  // Each orb's silhouette is a radius-per-angle table; morphing blends two tables.
-  const FORM_N = 96;
-  const MORPH_TIME = 1.8;
-  const FORM_POOL = ["round", "round", "cube", "star", "heart", "triangle", "flower", "jelly"];
-  const FORM_FOR_SHAPE = { heart: "heart", star: "star", cube: "cube", galaxy: "jelly", wave: "jelly", pyramid: "triangle", diamond: "triangle", flower: "flower", tornado: "jelly" };
-
-  const FORMS = (() => {
-    const superformula = (a, m, n1, n2, n3) =>
-      Math.pow(Math.pow(Math.abs(Math.cos((m * a) / 4)), n2) + Math.pow(Math.abs(Math.sin((m * a) / 4)), n3), -1 / n1);
-    const radial = {
-      round: () => 1,
-      cube: (a) => superformula(a, 4, 5, 5, 5),
-      star: (a) => 0.56 + 0.44 * Math.pow(0.5 + 0.5 * Math.cos(5 * (a + Math.PI / 2)), 2.2),
-      triangle: (a) => superformula(a - Math.PI / 2, 3, 4.5, 10, 10),
-      flower: (a) => 0.8 + 0.2 * Math.cos(6 * a),
-      jelly: () => 1,
-    };
-    const out = {};
-    const finish = (arr) => {
-      // normalise to the same area as a circle so size stays consistent
-      const rms = Math.sqrt(arr.reduce((t, v) => t + v * v, 0) / arr.length);
-      return Float32Array.from(arr, (v) => v / rms);
-    };
-    for (const k in radial) out[k] = finish(Array.from({ length: FORM_N }, (_, i) => radial[k]((i / FORM_N) * TAU)));
-
-    // heart: polar curve sampled densely, recentred, then resampled by angle
-    const pts = [];
-    for (let i = 0; i < 2000; i++) {
-      const t = (i / 2000) * TAU, sn = Math.sin(t);
-      const r = 2 - 2 * sn + (sn * Math.sqrt(Math.abs(Math.cos(t)))) / (sn + 1.4);
-      pts.push([Math.cos(t) * r, -Math.sin(t) * r]); // canvas y points down: tip at the bottom
-    }
-    const cx = pts.reduce((t, p) => t + p[0], 0) / pts.length, cy = pts.reduce((t, p) => t + p[1], 0) / pts.length - 0.35;
-    const polar = pts.map(([x, y]) => [Math.atan2(y - cy, x - cx), Math.hypot(x - cx, y - cy)]);
-    out.heart = finish(Array.from({ length: FORM_N }, (_, i) => {
-      const a = (i / FORM_N) * TAU - Math.PI;
-      let best = 0, bd = Infinity;
-      for (const [pa, pr] of polar) {
-        const d = Math.abs(Math.atan2(Math.sin(pa - a), Math.cos(pa - a)));
-        if (d < bd) { bd = d; best = pr; }
-      }
-      return best;
-    }).map((v, i, arr) => arr[(i + FORM_N / 2) % FORM_N])); // shift so index 0 is angle 0
-    return out;
-  })();
-
-  function pickForm(current) {
-    let f;
-    do f = FORM_POOL[(Math.random() * FORM_POOL.length) | 0]; while (f === current);
-    return f;
-  }
-
-  function morphTo(o, form, delay = 0) {
-    if (form === o.formB && o.formT >= 1) { o.formNext = time + rand(8, 14); return; }
-    o.formA = o.formT < 0.5 ? o.formA : o.formB;
-    o.formB = form;
-    o.formT = -delay / MORPH_TIME;
-    o.formNext = time + MORPH_TIME + delay + rand(6, 14);
-  }
-
-  let lastMorphSound = 0;
-  function morphSound(o) {
-    if (time - lastMorphSound < 0.6 || !o.P) return;
-    lastMorphSound = time;
-    const f = noteFreq(o.note) * 2;
-    glide(f, f * 1.122, o.P.X, 0.014 * o.P.s, 0.45);
-  }
-
-  const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
-
-  // trace the orb's current silhouette as the canvas path
-  function orbPath(o, r) {
-    const A = FORMS[o.formA], B = FORMS[o.formB], k = smooth(o.formT);
-    const jelly = (o.formA === "jelly" ? 1 - k : 0) + (o.formB === "jelly" ? k : 0);
-    const shaped = (o.formA === "round" ? 0 : 1 - k) + (o.formB === "round" ? 0 : k);
-    // a gentle turn around the vertical axis makes shaped orbs read as solid
-    const turnX = 1 - shaped * 0.14 * (1 - Math.cos(o.turn)) * 0.5;
+  function orbPath(r) {
     ctx.beginPath();
-    for (let i = 0; i < FORM_N; i++) {
-      const a = (i / FORM_N) * TAU;
-      let rr = lerp(A[i], B[i], k);
-      if (jelly > 0) rr += jelly * (0.09 * Math.sin(3 * a + time * 2.1 + o.phase) + 0.06 * Math.sin(5 * a - time * 1.6 + o.phase * 2));
-      const x = Math.cos(a + o.spin) * rr * r * turnX, y = Math.sin(a + o.spin) * rr * r;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
+    ctx.arc(0, 0, r, 0, TAU);
   }
 
   function orbScale(o) {
@@ -1413,7 +2092,7 @@
     body.addColorStop(0.68, css(mix(c, BLACK, 0.38)));
     body.addColorStop(1, css(mix(c, BLACK, 0.82)));
     ctx.fillStyle = body;
-    orbPath(o, r);
+    orbPath(r);
     ctx.fill();
 
     ctx.save();
@@ -1449,6 +2128,18 @@
     caustic.addColorStop(1, css(c, 0));
     ctx.fillStyle = caustic;
     ctx.fillRect(-r * 1.6, -r * 1.6, r * 3.2, r * 3.2);
+
+    // iridescent film: a faint rainbow drifting across the glass, like a soap bubble
+    const filmA = (theme().film || 0.13) * (1 - fog);
+    if (filmA > 0.01) {
+      const ia = time * 0.22 + o.phase;
+      const fx = Math.cos(ia) * r, fy = Math.sin(ia) * r;
+      const film = ctx.createLinearGradient(-fx, -fy, fx, fy);
+      const hue0 = time * 18 + o.phase * 57;
+      for (let k = 0; k <= 6; k++) film.addColorStop(k / 6, `hsla(${(hue0 + k * 60) % 360},95%,65%,${filmA})`);
+      ctx.fillStyle = film;
+      ctx.fillRect(-r * 1.2, -r * 1.2, r * 2.4, r * 2.4);
+    }
     ctx.globalCompositeOperation = "source-over";
 
     // soft inner rim that follows the silhouette, so every form looks puffy
@@ -1487,7 +2178,7 @@
     // fog veil
     if (fog > 0.02) {
       ctx.fillStyle = css(bg.a, fog * 0.55);
-      orbPath(o, r);
+      orbPath(r);
       ctx.fill();
     }
     ctx.restore();
@@ -1502,12 +2193,15 @@
     $("theme-ico").style.background = theme().swatch;
     $("sound-ico").textContent = settings.sound ? "♪" : "–";
     $("sound-lbl").textContent = settings.sound ? "Sound on" : "Sound off";
+    $("music-lbl").textContent = settings.music ? TRACKS[settings.track].label : "Music off";
+    $("music").setAttribute("aria-pressed", settings.music);
     $("auto-lbl").textContent = settings.auto ? "Auto on" : "Auto off";
     $("auto").setAttribute("aria-pressed", settings.auto);
     $("auto-speed").value = settings.autoSpeed;
     $("auto-speed-wrap").classList.toggle("off", !settings.auto);
     $("size").value = settings.size;
-    document.querySelector('meta[name="theme-color"]').setAttribute("content", theme().bg[1]);
+    if (here()) document.querySelector('meta[name="theme-color"]').setAttribute("content", theme().bg[1]);
+    window.dispatchEvent(new Event("zen-settings"));
   }
   $("mode").addEventListener("click", () => {
     settings.mode = (settings.mode + 1) % MODES.length;
@@ -1528,6 +2222,7 @@
     arpeggio(4 + settings.theme, 4, 1, 0.06, 0.045);
   });
   $("sound").addEventListener("click", () => setSound(!settings.sound));
+  $("music").addEventListener("click", nextMusic);
   $("auto").addEventListener("click", () => {
     settings.auto = !settings.auto;
     autoTimer = 0.3;
@@ -1542,7 +2237,7 @@
   $("size").addEventListener("input", (e) => { ensureAudio(); lastInteract = time; setSize(+e.target.value); });
   $("clear").addEventListener("click", () => { ensureAudio(); popAll(); });
   window.addEventListener("keydown", (e) => {
-    if (e.code !== "Space" || e.target.tagName === "BUTTON") return;
+    if (e.code !== "Space" || e.target.tagName === "BUTTON" || !here()) return;
     e.preventDefault();
     ensureAudio();
     lastInteract = time;
@@ -1572,18 +2267,32 @@
   }
   window.addEventListener("resize", resize);
 
-  let last = performance.now();
+  let last = performance.now(), wasHere = true;
   function frame(now) {
     const dt = Math.min(1 / 30, (now - last) / 1000);
     last = now;
-    if (dt > 0) update(dt);
-    render();
+    if (here()) {
+      if (dt > 0) update(dt);
+      render();
+    } else {
+      // another place is showing: hold still, silence our loops, keep the shared voice budget draining
+      if (wasHere && stirLoop) updateLoops(0, -1);
+      voiceBudget = Math.max(0, voiceBudget - dt * 40);
+    }
+    wasHere = here();
     requestAnimationFrame(frame);
   }
 
+  // shared with the other places (pond.js): one audio engine and one set of sound/music settings
+  window.Zen = {
+    settings, saveSettings, syncUi, ensureAudio, setSound, setMusic, audioOk,
+    output, noise, bell, plip, pluck, noteFreq, rand, clamp, lerp,
+    get ac() { return ac; },
+  };
+
   // dev hook: open with ?debug to inspect from the console
   if (new URLSearchParams(location.search).has("debug")) {
-    window.__drift = { orbs, update, render, popOrb, makeOrb, popAll, settings, ptr, proj, form, setSize, homeWorld, shape(name) { shapeBag = [name]; form.phase = "rest"; form.t = 99; }, set lastInteract(v) { lastInteract = v; }, get D() { return D; }, get well() { return well; } };
+    window.__drift = { music, get ac() { return ac; }, orbs, update, render, popOrb, makeOrb, popAll, settings, ptr, proj, form, setSize, homeWorld, shape(name) { shapeBag = [name]; form.phase = "rest"; form.t = 99; }, set lastInteract(v) { lastInteract = v; }, get D() { return D; }, get well() { return well; } };
   }
 
   resize();

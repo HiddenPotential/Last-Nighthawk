@@ -4,8 +4,22 @@
     {
       "name": "game",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5517"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5517"
+      ],
       "port": 5517
+    },
+    {
+      "name": "game-alt",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5518"
+      ],
+      "port": 5518
     }
   ]
 }

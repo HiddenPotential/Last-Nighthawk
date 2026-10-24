@@ -8,16 +8,16 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <canvas id="c" aria-label="Floating orbs you can create, fling and pop"></canvas>
+  <canvas id="c" data-for="orbs" aria-label="Floating orbs you can create, fling and pop"></canvas>
 
-  <div id="title">
+  <div id="title" class="title" data-for="orbs">
     <h1>Drift</h1>
     <p>Tap to create · Drag to fling · Hold to pull · Swipe to stir · Tap an orb to pop · Scroll to resize</p>
   </div>
 
-  <div id="caption" aria-live="polite"></div>
+  <div id="caption" data-for="orbs" aria-live="polite"></div>
 
-  <nav id="bar" aria-label="Settings">
+  <nav id="bar" class="bar" data-for="orbs" aria-label="Orb settings">
     <button id="mode" type="button" title="Motion"><span class="ico" id="mode-ico">◌</span><span class="lbl" id="mode-lbl">Float</span></button>
     <button id="theme" type="button" title="Colors"><span class="ico swatch" id="theme-ico"></span><span class="lbl" id="theme-lbl">Aurora</span></button>
     <label class="size" title="Orb size (or scroll over the orbs)">
@@ -31,10 +31,33 @@
       <input id="auto-speed" type="range" min="0" max="1" step="0.01" value="0.35" aria-label="Auto spawn speed" />
       <span class="ico speed-ico" aria-hidden="true">⁙</span>
     </label>
+    <button id="music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="music-lbl">Music on</span></button>
     <button id="sound" type="button" title="Sound"><span class="ico" id="sound-ico">♪</span><span class="lbl" id="sound-lbl">Sound on</span></button>
     <button id="clear" type="button" title="Pop everything"><span class="ico">✦</span><span class="lbl">Pop all</span></button>
   </nav>
 
+  <canvas id="pond" data-for="pond" class="away" aria-label="A koi pond you can feed"></canvas>
+
+  <div id="pond-title" class="title away" data-for="pond">
+    <h1>Pond</h1>
+    <p>Tap to feed · Hold to call the koi · Swipe to stir the water</p>
+  </div>
+
+  <nav id="pond-bar" class="bar away" data-for="pond" aria-label="Pond settings">
+    <button id="pond-feed" type="button" title="Scatter food across the pond (Space)"><span class="ico">∴</span><span class="lbl">Feed</span></button>
+    <button id="pond-rain" type="button" title="Rain" aria-pressed="false"><span class="ico">☂</span><span class="lbl" id="pond-rain-lbl">Rain off</span></button>
+    <button id="pond-time" type="button" title="Time of day"><span class="ico" id="pond-time-ico">☀</span><span class="lbl" id="pond-time-lbl">Day</span></button>
+    <button id="pond-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="pond-music-lbl">Music on</span></button>
+    <button id="pond-sound" type="button" title="Sound"><span class="ico" id="pond-sound-ico">♪</span><span class="lbl" id="pond-sound-lbl">Sound on</span></button>
+  </nav>
+
+  <nav id="places" aria-label="Places">
+    <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
+    <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
+  </nav>
+
   <script src="game.js"></script>
+  <script src="pond.js"></script>
+  <script src="places.js"></script>
 </body>
 </html>
