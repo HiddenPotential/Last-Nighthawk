@@ -1,11 +1,12 @@
-// Places: switch between the orb room and the koi pond.
+// Places: switch between the orb room, the koi pond and the sand garden.
 // Each place's elements carry data-for="<place>"; the rest fade out (class "away").
-// game.js and pond.js read document.body.dataset.place and pause while away.
+// game.js, pond.js and sand.js read document.body.dataset.place and pause while away.
 (() => {
   "use strict";
   const KEY = "drift-place";
-  const PLACES = ["orbs", "pond"];
-  const THEME_COLOR = { pond: "#06211f" };
+  const PLACES = ["orbs", "pond", "sand"];
+  const CHIME = { orbs: [9, 12], pond: [7, 10], sand: [5, 8] };
+  const THEME_COLOR = { pond: "#06211f", sand: "#cfc4ae" };
 
   let place = "orbs";
   try { place = localStorage.getItem(KEY) || "orbs"; } catch (_) { /* storage unavailable */ }
@@ -23,8 +24,9 @@
     if (!initial && window.Zen) {
       Zen.ensureAudio();
       // a soft two-note chime as you arrive
-      Zen.bell(Zen.noteFreq(p === "pond" ? 7 : 9), 0.035, innerWidth / 2, 2.4);
-      setTimeout(() => Zen.bell(Zen.noteFreq(p === "pond" ? 10 : 12), 0.03, innerWidth / 2, 2.6), 140);
+      const [a, b] = CHIME[p] || CHIME.orbs;
+      Zen.bell(Zen.noteFreq(a), 0.035, innerWidth / 2, 2.4);
+      setTimeout(() => Zen.bell(Zen.noteFreq(b), 0.03, innerWidth / 2, 2.6), 140);
     }
   }
 

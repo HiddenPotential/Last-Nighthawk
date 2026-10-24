@@ -51,13 +51,34 @@
     <button id="pond-sound" type="button" title="Sound"><span class="ico" id="pond-sound-ico">♪</span><span class="lbl" id="pond-sound-lbl">Sound on</span></button>
   </nav>
 
+  <canvas id="sand" data-for="sand" class="away" aria-label="A zen sand garden you can rake"></canvas>
+
+  <div id="sand-title" class="title away" data-for="sand">
+    <h1>Sand</h1>
+    <p>Drag to rake · Tap to set a stone · Tap a stone to nudge it · Drag a stone to move it, or off the edge to take it away</p>
+  </div>
+
+  <nav id="sand-bar" class="bar away" data-for="sand" aria-label="Garden settings">
+    <button id="sand-smooth" type="button" title="Smooth the sand"><span class="ico">∼</span><span class="lbl">Smooth</span></button>
+    <label class="size" title="Rake tines">
+      <span class="ico tine-ico" aria-hidden="true">ıı</span>
+      <input id="sand-tines" type="range" min="2" max="8" step="1" value="5" aria-label="Rake tines" />
+      <span class="ico tine-ico" aria-hidden="true">ıııı</span>
+      <span class="lbl" id="sand-tines-lbl">5 tines</span>
+    </label>
+    <button id="sand-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="sand-music-lbl">Music on</span></button>
+    <button id="sand-sound" type="button" title="Sound"><span class="ico" id="sand-sound-ico">♪</span><span class="lbl" id="sand-sound-lbl">Sound on</span></button>
+  </nav>
+
   <nav id="places" aria-label="Places">
     <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
     <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
+    <button type="button" data-place="sand" aria-pressed="false"><span class="ico">≡</span><span class="lbl">Sand</span></button>
   </nav>
 
   <script src="game.js"></script>
   <script src="pond.js"></script>
+  <script src="sand.js"></script>
   <script src="places.js"></script>
 </body>
 </html>

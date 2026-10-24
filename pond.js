@@ -1054,8 +1054,8 @@
   function resize() {
     const oldW = W || window.innerWidth, oldH = H || window.innerHeight;
     DPR = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth;
-    H = window.innerHeight;
+    W = Math.max(1, window.innerWidth); // a hidden frame can report 0 until its first resize
+    H = Math.max(1, window.innerHeight);
     S = clamp(Math.min(W, H) / 800, 0.55, 1.25);
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
@@ -1066,7 +1066,10 @@
     for (const f of fish) for (const s of [f, ...f.segs]) { s.x *= kx; s.y *= ky; }
     for (const p of [...pads, ...food, ...petals]) { p.x *= kx; p.y *= ky; }
   }
-  window.addEventListener("resize", resize);
+  // a frame hidden at load can report a 0 size: wait for a real one before laying things out
+  let seeded = false;
+  const seedOnce = () => { if (!seeded && window.innerWidth > 0 && window.innerHeight > 0) { seeded = true; seed(); } };
+  window.addEventListener("resize", () => { resize(); seedOnce(); });
 
   let last = performance.now();
   function frame(now) {
@@ -1084,7 +1087,7 @@
   }
 
   resize();
-  seed();
+  seedOnce();
   syncUi();
   requestAnimationFrame(frame);
 })();

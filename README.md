@@ -18,6 +18,7 @@ The switcher in the top-left corner moves between calm places. Each one remember
 
 - **Orbs**: the glossy orb room described below.
 - **Pond**: a top-down koi pond (see [Pond](#pond)).
+- **Sand**: a top-down zen sand garden (see [Sand](#sand)).
 
 ## Play
 
@@ -68,12 +69,26 @@ Koi of different varieties (kohaku, sanke, ogon, tancho, showa and more) glide u
 
 Koi get hungry over time and ignore food once they're full, and they grow a little each time they eat. The bar has **Feed**, **Rain** (rain rings the surface and you hear it), **time of day** (Day, Dusk, Night with a moon reflection and fireflies), music and sound.
 
+## Sand
+
+A karesansui, seen from above: pale raked sand, a few stones on cushions of moss, cloud shadows drifting over, and now and then a falling leaf. It starts freshly raked in straight lines that bend around the stones, with rings hugging each one.
+
+| Do this                  | What happens                                                              |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Drag on the sand         | Rake grooves; the tines follow your finger and curve around any stone     |
+| Tap the sand             | Set down a stone (up to 9); rings form around it as it settles            |
+| Tap a stone              | Nudge it a little way; it re-rings the sand where it stops                |
+| Drag a stone             | Move it; set it down near the edge to take it away                        |
+
+Grooves stay where you rake them and only soften very slowly (over about ten minutes). The bar has **Smooth** (a soft sweep down the garden that leaves flat sand), a **tines** slider (2 to 8 tines, so a narrower or wider rake), music and sound. You hear the hush and grit of the rake through the sand, a low thud as a stone settles, a dry tok when one is knocked, a faint breeze, and the odd distant wind chime or bamboo spout. The stones and tine count are remembered.
+
 ## Files
 
 - `index.html`: page and controls
 - `style.css`: layout and the frosted control bar
 - `game.js`: physics, orb rendering and Web Audio sound; also shares its audio engine with the other places as `window.Zen`
 - `pond.js`: the koi pond
+- `sand.js`: the sand garden
 - `places.js`: the place switcher
 
-Add `?debug` to the URL to get `window.__drift` and `window.__pond` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__pond` and `window.__sand` in the console for testing.
