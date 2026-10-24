@@ -79,6 +79,21 @@
   <script src="game.js"></script>
   <script src="pond.js"></script>
   <script src="sand.js"></script>
+  <div id="sounds">
+    <button id="sounds-btn" type="button" aria-expanded="false" aria-controls="sounds-panel" title="Ambient sounds">
+      <span class="ico" id="sounds-ico">∿</span><span class="lbl" id="sounds-lbl">Sounds</span>
+    </button>
+    <div id="sounds-panel" hidden>
+      <div id="sounds-list" role="radiogroup" aria-label="Ambient sound"></div>
+      <label class="sounds-vol" title="Ambient volume">
+        <span aria-hidden="true">−</span>
+        <input id="sounds-vol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Ambient volume" />
+        <span aria-hidden="true">+</span>
+      </label>
+    </div>
+  </div>
+
   <script src="places.js"></script>
+  <script src="ambience.js"></script>
 </body>
 </html>

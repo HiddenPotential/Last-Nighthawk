@@ -82,6 +82,21 @@ A karesansui, seen from above: pale raked sand, a few stones on cushions of moss
 
 Grooves stay where you rake them and only soften very slowly (over about ten minutes). The bar has **Smooth** (a soft sweep down the garden that leaves flat sand), a **tines** slider (2 to 8 tines, so a narrower or wider rake), music and sound. You hear the hush and grit of the rake through the sand, a low thud as a stone settles, a dry tok when one is knocked, a faint breeze, and the odd distant wind chime or bamboo spout. The stones and tine count are remembered.
 
+## Ambient sounds
+
+The **Sounds** button in the top-right corner plays a soundscape under whichever place you're in. Each one is mixed live from generated noise and tones, so no two minutes sound the same:
+
+- **Rain**: steady hiss, pattering drops, puddle plinks and a dripping gutter
+- **Sea**: waves that swell, break into foam and wash back over a deep roll
+- **Storm**: heavy rain, gusting wind and rolling thunder, some of it close
+- **Wind**: shifting gusts with a faint whistle
+- **Stream**: a babbling brook
+- **Forest**: birdsong (trills, whistles, warbles) over a breeze and a distant brook
+- **Night**: crickets and the odd frog
+- **Fire**: a crackling campfire with the occasional pop
+
+The slider sets its volume. Your choice is remembered and starts again on your first tap; the Sound button mutes it along with everything else.
+
 ## Files
 
 - `index.html`: page and controls
@@ -90,5 +105,6 @@ Grooves stay where you rake them and only soften very slowly (over about ten min
 - `pond.js`: the koi pond
 - `sand.js`: the sand garden
 - `places.js`: the place switcher
+- `ambience.js`: the ambient soundscapes
 
 Add `?debug` to the URL to get `window.__drift`, `window.__pond` and `window.__sand` in the console for testing.

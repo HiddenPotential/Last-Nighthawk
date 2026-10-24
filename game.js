@@ -2288,6 +2288,8 @@
     settings, saveSettings, syncUi, ensureAudio, setSound, setMusic, audioOk,
     output, noise, bell, plip, pluck, noteFreq, rand, clamp, lerp,
     get ac() { return ac; },
+    get master() { return master; },
+    get verb() { return verb; },
   };
 
   // dev hook: open with ?debug to inspect from the console
