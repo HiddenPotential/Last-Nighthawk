@@ -19,6 +19,7 @@ The switcher in the top-left corner moves between calm places. Each one remember
 - **Orbs**: the glossy orb room described below.
 - **Pond**: a top-down koi pond (see [Pond](#pond)).
 - **Sand**: a top-down zen sand garden (see [Sand](#sand)).
+- **Lanterns**: a night lake where you light paper lanterns (see [Lanterns](#lanterns)).
 
 ## Play
 
@@ -97,6 +98,20 @@ The **Sounds** button in the top-right corner plays a soundscape under whichever
 
 The slider sets its volume. Your choice is remembered and starts again on your first tap; the Sound button mutes it along with everything else.
 
+## Lanterns
+
+A lake at night under layered mountains: stars, a crescent moon laid across the water, a few village lights on the far shore, reeds in the near corners. Paper lanterns drift up into the distance and their light is mirrored, broken up, in the lake.
+
+| Do this               | What happens                                                                   |
+| --------------------- | ------------------------------------------------------------------------------ |
+| Tap the sky           | Light a lantern; it fills with warm air, then rises and drifts into the distance |
+| Hold on the sky       | A lantern fills in your hand, growing the longer you hold; drag it, let go to release |
+| Tap the lake          | Float a little box lantern; the current carries it slowly out to the far shore |
+| Drag                  | Send a breeze through the lanterns and reeds, or stir the water               |
+| <kbd>Space</kbd>      | Release lanterns all along the far shore (same as **Release**)                |
+
+The bar has **Release**, lantern **color** (Amber, Rose, Moon, Jade or Mixed), music and sound. Now and then a shooting star crosses, someone far off lets a lantern go, and a temple bell sounds across the water. You hear each wick catch, a chime as a lantern lifts off, the water lapping and the breeze you make. The color is remembered.
+
 ## Files
 
 - `index.html`: page and controls
@@ -104,7 +119,8 @@ The slider sets its volume. Your choice is remembered and starts again on your f
 - `game.js`: physics, orb rendering and Web Audio sound; also shares its audio engine with the other places as `window.Zen`
 - `pond.js`: the koi pond
 - `sand.js`: the sand garden
+- `lanterns.js`: the lantern lake
 - `places.js`: the place switcher
 - `ambience.js`: the ambient soundscapes
 
-Add `?debug` to the URL to get `window.__drift`, `window.__pond` and `window.__sand` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand` and `window.__lanterns` in the console for testing.

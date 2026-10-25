@@ -12,7 +12,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#c, #pond, #sand {
+#c, #pond, #sand, #lanterns {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -242,6 +242,10 @@ html, body {
   #places .lbl { display: none; }
   .title { top: calc(max(16px, env(safe-area-inset-top)) + 52px); }
 }
+
+/* ---------- Lanterns ---------- */
+#lanterns { cursor: crosshair; }
+#lanterns-title h1 { text-shadow: 0 0 30px rgba(255, 170, 90, 0.55); }
 
 /* ---------- Sand: a light place, so dark ink ---------- */
 #sand { cursor: crosshair; }

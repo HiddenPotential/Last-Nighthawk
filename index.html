@@ -70,15 +70,31 @@
     <button id="sand-sound" type="button" title="Sound"><span class="ico" id="sand-sound-ico">♪</span><span class="lbl" id="sand-sound-lbl">Sound on</span></button>
   </nav>
 
+  <canvas id="lanterns" data-for="lanterns" class="away" aria-label="A night lake where you can light lanterns"></canvas>
+
+  <div id="lanterns-title" class="title away" data-for="lanterns">
+    <h1>Lanterns</h1>
+    <p>Tap the sky to light a lantern · Hold to let a bigger one fill · Tap the lake to float one · Drag to send a breeze</p>
+  </div>
+
+  <nav id="lanterns-bar" class="bar away" data-for="lanterns" aria-label="Lantern settings">
+    <button id="lanterns-release" type="button" title="Release lanterns along the shore (Space)"><span class="ico">⇡</span><span class="lbl">Release</span></button>
+    <button id="lanterns-color" type="button" title="Lantern color"><span class="ico swatch" id="lanterns-color-ico"></span><span class="lbl" id="lanterns-color-lbl">Amber</span></button>
+    <button id="lanterns-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="lanterns-music-lbl">Music on</span></button>
+    <button id="lanterns-sound" type="button" title="Sound"><span class="ico" id="lanterns-sound-ico">♪</span><span class="lbl" id="lanterns-sound-lbl">Sound on</span></button>
+  </nav>
+
   <nav id="places" aria-label="Places">
     <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
     <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
     <button type="button" data-place="sand" aria-pressed="false"><span class="ico">≡</span><span class="lbl">Sand</span></button>
+    <button type="button" data-place="lanterns" aria-pressed="false"><span class="ico">⌂</span><span class="lbl">Lanterns</span></button>
   </nav>
 
   <script src="game.js"></script>
   <script src="pond.js"></script>
   <script src="sand.js"></script>
+  <script src="lanterns.js"></script>
   <div id="sounds">
     <button id="sounds-btn" type="button" aria-expanded="false" aria-controls="sounds-panel" title="Ambient sounds">
       <span class="ico" id="sounds-ico">∿</span><span class="lbl" id="sounds-lbl">Sounds</span>
