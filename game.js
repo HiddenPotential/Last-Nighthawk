@@ -1275,9 +1275,12 @@
   const SHAPES = [
     "ring", "sphere", "helix", "heart", "star", "cube", "galaxy", "wave",
     "donut", "pyramid", "diamond", "infinity", "spiral", "moon", "flower", "smiley", "tornado", "atom", "saturn",
+    "crown", "butterfly", "lightning", "note", "tree", "house", "cat", "fish", "sun",
   ];
-  const FLAT = new Set(["heart", "star", "ring", "infinity", "spiral", "moon", "flower", "smiley", "atom"]);
-  const SHAPES_MIN_ORBS = 30;
+  const FLAT = new Set(["heart", "star", "ring", "infinity", "spiral", "moon", "flower", "smiley", "atom",
+    "crown", "butterfly", "lightning", "note", "tree", "house", "cat", "fish", "sun"]);
+  const SHAPES_MIN_ORBS = 36;
+  const SHAPE_LABEL = { helix: "double helix", infinity: "infinity", moon: "crescent moon", note: "music note", lightning: "lightning bolt", tree: "pine tree", smiley: "smiley face", cat: "cat face" };
   let shapeBag = [];
   const IDLE_SHAPES_AFTER = 25;
 
@@ -1333,23 +1336,176 @@
       autoCareTimer = 0.35; // stagger pops so they never all go at once
     }
   }
-  const SHAPE_SCALE = { galaxy: 1.55, wave: 1.4, donut: 1.25, saturn: 1.2, infinity: 1.25, atom: 1.45 };
-  const form = { phase: "idle", t: 0, idx: -1, name: "", spin: 0, tilt: 0, scale: 1 };
+  const SHAPE_SCALE = { butterfly: 1.05, fish: 1.15, note: 1.15, galaxy: 1.55, wave: 1.4, donut: 1.25, saturn: 1.2, infinity: 1.25, atom: 1.45 };
+  const form = { phase: "idle", t: 0, idx: -1, name: "", spin: 0, tilt: 0, scale: 1, fitR: 20 };
   let lastInteract = 0, stirSpeed = 0, wellStart = -1, plipTimer = 3, spawnTimer = 0, autoTimer = 1;
 
-  // spread point i of n evenly along a wireframe's edges
-  function edgePoint(V, E, i, n) {
-    const per = Math.ceil(n / E.length), e = E[i % E.length], f = (Math.floor(i / E.length) + 0.5) / per;
-    return [lerp(V[e[0]][0], V[e[1]][0], f), lerp(V[e[0]][1], V[e[1]][1], f), lerp(V[e[0]][2], V[e[1]][2], f)];
+  // Outline shapes are drawn as strokes in a -1..1 box (y points down, z optional).
+  // A one-point stroke is a dot that always gets an orb.
+  const closed = (pts) => pts.concat([pts[0]]);
+  const curve = (f, steps = 160, t0 = 0, t1 = TAU) => Array.from({ length: steps + 1 }, (_, k) => f(lerp(t0, t1, k / steps)));
+  const ellipse = (cx, cy, rx, ry) => curve((a) => [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry], 64);
+  const mirror = (pts) => pts.map(([x, y, z]) => [-x, y, z]);
+  const polygon = (k, r0, r1, turn = -Math.PI / 2) =>
+    closed(Array.from({ length: k }, (_, j) => { const a = turn + (j * TAU) / k, r = j % 2 ? r1 : r0; return [Math.cos(a) * r, Math.sin(a) * r]; }));
+  const edges = (V, E) => E.map(([a, b]) => [V[a], V[b]]);
+  const catEar = [[-0.6, -0.2], [-0.6, -0.98], [-0.2, -0.45]];
+  const STROKES = {
+    ring: [ellipse(0, 0, 1, 1)],
+    heart: [curve((t) => {
+      const x = 16 * Math.sin(t) ** 3, y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      return [x / 17, -y / 17 - 0.1];
+    }, 240)],
+    star: [polygon(10, 1, 0.44)],
+    infinity: [curve((t) => { const d = 1 + Math.sin(t) ** 2; return [Math.cos(t) / d * 1.05, (Math.sin(t) * Math.cos(t)) / d * 1.25, Math.sin(t) * 0.2]; }, 200)],
+    spiral: [curve((a) => { const t = a / (TAU * 2.25); return [Math.cos(a) * (0.1 + 0.9 * t), Math.sin(a) * (0.1 + 0.9 * t)]; }, 200, 0, TAU * 2.25)],
+    // one crescent outline: the outer arc, then the inner arc cut by a second circle, meeting at two sharp tips
+    moon: [closed([
+      ...curve((a) => [Math.cos(a), Math.sin(a)], 90, Math.PI / 4, (7 * Math.PI) / 4),
+      ...curve((a) => [0.5 + Math.cos(a) * 0.737, Math.sin(a) * 0.737], 60, TAU - 1.286, 1.286).slice(1, -1),
+    ])],
+    // five rounded petals around a small centre
+    flower: [
+      curve((a) => { const r = 0.32 + 0.68 * Math.abs(Math.cos(2.5 * a)); return [Math.cos(a - Math.PI / 2) * r, Math.sin(a - Math.PI / 2) * r]; }, 300),
+      [[0, 0]],
+    ],
+    smiley: [
+      ellipse(0, 0, 1, 1),
+      [[-0.34, -0.42], [-0.34, -0.2]], [[0.34, -0.42], [0.34, -0.2]],
+      curve((a) => [Math.cos(a) * 0.6, 0.02 + Math.sin(a) * 0.5], 40, 0.15 * Math.PI, 0.85 * Math.PI),
+    ],
+    // a nucleus and three orbits crossing at 60°, nudged apart in depth where they cross
+    atom: [[[0, 0, 0]], ...[0, 1, 2].map((k) => curve((a) => {
+      const ex = Math.cos(a), ey = Math.sin(a) * 0.3, rot = (k * Math.PI) / 3;
+      return [ex * Math.cos(rot) - ey * Math.sin(rot), ex * Math.sin(rot) + ey * Math.cos(rot), Math.sin(a) * 0.22];
+    }, 120))],
+    cube: (() => {
+      const c = 0.62, V = [[-c, -c, -c], [c, -c, -c], [c, c, -c], [-c, c, -c], [-c, -c, c], [c, -c, c], [c, c, c], [-c, c, c]];
+      return edges(V, [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]]);
+    })(),
+    pyramid: (() => {
+      const c = 0.78, V = [[-c, 0.6, -c], [c, 0.6, -c], [c, 0.6, c], [-c, 0.6, c], [0, -0.9, 0]];
+      return edges(V, [[0, 1], [1, 2], [2, 3], [3, 0], [0, 4], [1, 4], [2, 4], [3, 4]]);
+    })(),
+    diamond: (() => {
+      // a cut gem: a flat table on top, a girdle, and a point below
+      const ring = (r, y, k, off = 0) => Array.from({ length: k }, (_, j) => { const a = off + (j * TAU) / k; return [Math.cos(a) * r, y, Math.sin(a) * r]; });
+      const table = ring(0.45, -0.55, 5, 0.3), girdle = ring(0.9, -0.2, 5, 0.3), V = [...table, ...girdle, [0, 0.95, 0]];
+      const E = [];
+      for (let j = 0; j < 5; j++) E.push([j, (j + 1) % 5], [5 + j, 5 + ((j + 1) % 5)], [j, 5 + j], [5 + j, 10]);
+      return edges(V, E);
+    })(),
+    crown: [
+      closed([[-0.85, 0.55], [0.85, 0.55], [0.95, -0.5], [0.45, 0.02], [0, -0.8], [-0.45, 0.02], [-0.95, -0.5]]),
+      [[-0.85, 0.3], [0.85, 0.3]],
+    ],
+    // big upper wings, smaller lower ones, a body and two curling antennae
+    butterfly: (() => {
+      const wing = (cx, cy, rx, ry, rot) => curve((a) => {
+        const x = Math.cos(a) * rx, y = Math.sin(a) * ry;
+        return [cx + x * Math.cos(rot) - y * Math.sin(rot), cy + x * Math.sin(rot) + y * Math.cos(rot)];
+      }, 64);
+      const upper = wing(0.5, -0.3, 0.46, 0.33, -0.55), lower = wing(0.36, 0.42, 0.3, 0.22, 0.65);
+      const feeler = curve((t) => [0.05 + 0.3 * t, -0.5 - 0.42 * t + 0.12 * t * t], 20, 0, 1);
+      return [upper, mirror(upper), lower, mirror(lower), [[0, -0.48], [0, 0.6]], feeler, mirror(feeler)];
+    })(),
+    lightning: [closed([[0.22, -1], [-0.5, 0.12], [-0.04, 0.12], [-0.25, 1], [0.52, -0.2], [0.06, -0.2], [0.4, -1]])],
+    note: [
+      ellipse(-0.3, 0.6, 0.34, 0.24), ellipse(-0.3, 0.6, 0.14, 0.08), // a filled-in note head
+      [[0.04, 0.56], [0.04, -0.92]],
+      curve((t) => [0.04 + 0.45 * Math.sin(t * 1.4), -0.92 + 0.75 * t], 30, 0, 1),
+    ],
+    tree: [
+      closed([[0, -1], [0.45, -0.4], [0.22, -0.4], [0.68, 0.25], [0.15, 0.25], [0.15, 0.75], [-0.15, 0.75], [-0.15, 0.25], [-0.68, 0.25], [-0.22, -0.4], [-0.45, -0.4]]),
+    ],
+    house: [
+      closed([[-0.7, 0.8], [0.7, 0.8], [0.7, -0.1], [0, -0.82], [-0.7, -0.1]]),
+      [[-0.18, 0.8], [-0.18, 0.32], [0.18, 0.32], [0.18, 0.8]],
+    ],
+    cat: [ellipse(0, 0.18, 0.75, 0.62), catEar, mirror(catEar), [[-0.28, 0.06]], [[0.28, 0.06]], [[0, 0.32]]],
+    fish: [curve((t) => [Math.cos(t) - Math.sin(t) ** 2 / Math.SQRT2, Math.cos(t) * Math.sin(t) * 1.1], 240), [[0.55, -0.12]]],
+    sun: [ellipse(0, 0, 0.5, 0.5), ...Array.from({ length: 8 }, (_, k) => {
+      const a = (k / 8) * TAU;
+      return [[Math.cos(a) * 0.7, Math.sin(a) * 0.7], [Math.cos(a) * 1, Math.sin(a) * 1]];
+    })],
+  };
+
+  // Turn strokes into n points. Corners (and dots) are anchors that always get an orb, so stars
+  // stay pointy and crowns keep their tips; the rest are spread evenly by length between them.
+  const STROKE_PATHS = {};
+  function strokePaths(name) {
+    if (STROKE_PATHS[name]) return STROKE_PATHS[name];
+    const anchors = [], dots = [], segs = [], seen = new Set();
+    const addAnchor = (p, list = anchors) => {
+      const key = p.map((v) => v.toFixed(3)).join();
+      if (!seen.has(key)) { seen.add(key); list.push(p); }
+    };
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    for (const raw of STROKES[name]) {
+      let s = raw.map(([x, y, z = 0]) => [x, y, z]);
+      if (s.length === 1) { addAnchor(s[0], dots); continue; }
+      const loop = s.length > 2 && dist(s[0], s[s.length - 1]) < 1e-6;
+      const turn = (k) => {
+        const a = s[k === 0 ? s.length - 2 : k - 1], b = s[k], c = s[k === 0 ? 1 : k + 1];
+        const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - b[0], c[1] - b[1], c[2] - b[2]];
+        const d = Math.hypot(...u) * Math.hypot(...v);
+        return d ? Math.acos(clamp((u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / d, -1, 1)) : 0;
+      };
+      let corners = [];
+      for (let k = loop ? 0 : 1; k < s.length - 1; k++) if (turn(k) > 0.5) corners.push(k);
+      if (loop && corners.length) {
+        // start the loop on a corner so every corner splits it cleanly
+        const c0 = corners[0];
+        s = s.slice(c0, -1).concat(s.slice(0, c0 + 1));
+        corners = corners.map((k) => k - c0);
+      }
+      const cuts = loop ? (corners.length ? [...corners, s.length - 1] : [0, s.length - 1]) : [0, ...corners, s.length - 1];
+      for (const k of cuts) if (!(loop && !corners.length)) addAnchor(s[k]);
+      for (let j = 0; j + 1 < cuts.length; j++) {
+        const pts = s.slice(cuts[j], cuts[j + 1] + 1), cum = [0];
+        for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + dist(pts[k], pts[k - 1]));
+        segs.push({ pts, cum, len: cum[cum.length - 1], ring: loop && !corners.length });
+      }
+    }
+    return (STROKE_PATHS[name] = { anchors, dots, segs });
+  }
+
+  function alongSeg(sg, d) {
+    let k = 1;
+    while (k < sg.cum.length - 1 && sg.cum[k] < d) k++;
+    const a = sg.pts[k - 1], b = sg.pts[k], f = sg.cum[k] > sg.cum[k - 1] ? clamp((d - sg.cum[k - 1]) / (sg.cum[k] - sg.cum[k - 1]), 0, 1) : 0;
+    return [lerp(a[0], b[0], f), lerp(a[1], b[1], f), lerp(a[2], b[2], f)];
+  }
+
+  function tracePoints(name, n) {
+    const { anchors, dots, segs } = strokePaths(name);
+    const fixed = dots.length + anchors.length <= n ? dots.concat(anchors) : dots.slice(0, n);
+    const useAnchors = fixed.length > dots.length;
+    const left = n - fixed.length, total = segs.reduce((a, sg) => a + sg.len, 0) || 1;
+    // largest-remainder split of the remaining orbs across segments by length
+    const share = segs.map((sg) => (sg.len / total) * left), counts = share.map(Math.floor);
+    const order = share.map((v, j) => [v - counts[j], j]).sort((a, b) => b[0] - a[0]);
+    const short = left - counts.reduce((a, b) => a + b, 0);
+    for (let k = 0; k < short; k++) counts[order[k][1]]++;
+    const pts = fixed.slice();
+    segs.forEach((sg, j) => {
+      const m = counts[j];
+      for (let i = 0; i < m; i++) {
+        // between anchors the ends are taken, so points sit strictly inside; free loops and anchorless runs spread evenly
+        const f = sg.ring ? i / m : useAnchors ? (i + 1) / (m + 1) : (i + 0.5) / m;
+        pts.push(alongSeg(sg, f * sg.len));
+      }
+    });
+    return pts;
   }
 
   function shapePoints(name, n) {
+    if (STROKES[name]) return tracePoints(name, n);
     const pts = [];
     for (let i = 0; i < n; i++) {
       const u = i / n;
       let p;
       switch (name) {
-        case "ring": { const a = u * TAU; p = [Math.cos(a), Math.sin(a), 0]; break; }
         case "sphere": {
           const y = 1 - (2 * (i + 0.5)) / n, rr = Math.sqrt(1 - y * y), a = i * 2.39996;
           p = [Math.cos(a) * rr * 0.9, y * 0.9, Math.sin(a) * rr * 0.9];
@@ -1358,26 +1514,6 @@
         case "helix": {
           const t = n > 1 ? i / (n - 1) : 0, a = t * TAU * 2 + (i % 2) * Math.PI;
           p = [Math.cos(a) * 0.55, t * 2 - 1, Math.sin(a) * 0.55];
-          break;
-        }
-        case "heart": {
-          const t = u * TAU;
-          const x = 16 * Math.pow(Math.sin(t), 3), y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-          p = [x / 17, -y / 17 - 0.1, Math.sin(t * 2) * 0.1];
-          break;
-        }
-        case "star": {
-          const f = u * 10, k = Math.floor(f), fr = f - k;
-          const v = (j) => { const a = -Math.PI / 2 + (j * Math.PI) / 5, rr = j % 2 ? 0.42 : 1; return [Math.cos(a) * rr, Math.sin(a) * rr]; };
-          const a0 = v(k), a1 = v(k + 1);
-          p = [lerp(a0[0], a1[0], fr), lerp(a0[1], a1[1], fr), 0];
-          break;
-        }
-        case "cube": {
-          const c = 0.62, V = [[-c, -c, -c], [c, -c, -c], [c, c, -c], [-c, c, -c], [-c, -c, c], [c, -c, c], [c, c, c], [-c, c, c]];
-          const E = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
-          const per = Math.ceil(n / 12), e = E[i % 12], f = (Math.floor(i / 12) + 0.5) / per;
-          p = [lerp(V[e[0]][0], V[e[1]][0], f), lerp(V[e[0]][1], V[e[1]][1], f), lerp(V[e[0]][2], V[e[1]][2], f)];
           break;
         }
         case "galaxy": {
@@ -1392,72 +1528,10 @@
           p = [Math.cos(a) * rr, (outer ? 0 : 0.08) * Math.sin(a * 3), Math.sin(a) * rr];
           break;
         }
-        case "pyramid": {
-          const c = 0.75, top = [0, -0.85, 0];
-          const V = [[-c, 0.6, -c], [c, 0.6, -c], [c, 0.6, c], [-c, 0.6, c], top];
-          p = edgePoint(V, [[0, 1], [1, 2], [2, 3], [3, 0], [0, 4], [1, 4], [2, 4], [3, 4]], i, n);
-          break;
-        }
-        case "diamond": {
-          const V = [[0, -1, 0], [0, 1, 0], [0.7, 0, 0], [-0.7, 0, 0], [0, 0, 0.7], [0, 0, -0.7]];
-          p = edgePoint(V, [[0, 2], [0, 3], [0, 4], [0, 5], [1, 2], [1, 3], [1, 4], [1, 5], [2, 4], [4, 3], [3, 5], [5, 2]], i, n);
-          break;
-        }
-        case "infinity": {
-          const t = u * TAU, d = 1 + Math.sin(t) ** 2;
-          p = [Math.cos(t) / d, (Math.sin(t) * Math.cos(t)) / d * 1.3, Math.sin(t) * 0.18];
-          break;
-        }
-        case "spiral": {
-          const t = n > 1 ? i / (n - 1) : 0, a = t * TAU * 2.25;
-          p = [Math.cos(a) * (0.12 + 0.88 * t), Math.sin(a) * (0.12 + 0.88 * t), 0];
-          break;
-        }
-        case "moon": {
-          // outer arc opening to the right, inner arc carved from a second circle
-          const outer = Math.round(n * 0.6);
-          if (i < outer) {
-            const a = lerp(0.25 * Math.PI, 1.75 * Math.PI, outer > 1 ? i / (outer - 1) : 0.5);
-            p = [Math.cos(a), Math.sin(a), 0];
-          } else {
-            const k = n - outer > 1 ? (i - outer) / (n - outer - 1) : 0.5, lim = 1.286;
-            const a = lerp(lim, TAU - lim, k);
-            p = [0.5 + Math.cos(a) * 0.737, Math.sin(a) * 0.737, 0];
-          }
-          break;
-        }
-        case "flower": {
-          const t = u * Math.PI, r = Math.cos(5 * t);
-          p = [r * Math.cos(t), r * Math.sin(t), 0];
-          break;
-        }
-        case "smiley": {
-          const face = Math.round(n * 0.58), eyes = Math.max(2, Math.round(n * 0.12));
-          if (i < face) { const a = (i / face) * TAU; p = [Math.cos(a), Math.sin(a), 0]; }
-          else if (i < face + eyes) {
-            const k = i - face, side = k % 2 ? 1 : -1, row = Math.floor(k / 2);
-            p = [side * 0.36, -0.32 + row * 0.16, 0];
-          } else {
-            const m = n - face - eyes, k = m > 1 ? (i - face - eyes) / (m - 1) : 0.5;
-            const a = lerp(0.18 * Math.PI, 0.82 * Math.PI, k);
-            p = [Math.cos(a) * 0.58, 0.02 + Math.sin(a) * 0.5, 0];
-          }
-          break;
-        }
         case "tornado": {
           const t = n > 1 ? i / (n - 1) : 0, a = t * TAU * 3;
           const rr = 0.1 + 0.85 * (1 - t);
           p = [Math.cos(a) * rr, -1 + 2 * t, Math.sin(a) * rr];
-          break;
-        }
-        case "atom": {
-          // classic atom logo: a small nucleus and three elliptical orbits crossing at 60°
-          const core = 3;
-          if (i < core) { const a = (i / core) * TAU; p = [Math.cos(a) * 0.09, Math.sin(a) * 0.09, 0]; break; }
-          const k = (i - core) % 3, m = Math.ceil((n - core) / 3);
-          const a = (Math.floor((i - core) / 3) / m) * TAU + k * 0.4;
-          const ex = Math.cos(a), ey = Math.sin(a) * 0.27, rot = (k * Math.PI) / 3;
-          p = [ex * Math.cos(rot) - ey * Math.sin(rot), ex * Math.sin(rot) + ey * Math.cos(rot), Math.sin(a) * 0.2];
           break;
         }
         case "saturn": {
@@ -1482,7 +1556,8 @@
   }
 
   function homeWorld(h) {
-    const S = Math.min(W, H) * 0.3 * form.scale * (SHAPE_SCALE[form.name] || 1), Sz = Math.min(S, D * 0.45);
+    // portrait phones get to use more of their width; nothing spills past the sides
+    const S = Math.min(Math.min(W * 0.4, H * 0.3) * form.scale * (SHAPE_SCALE[form.name] || 1), W * 0.46), Sz = Math.min(S, D * 0.45);
     // spin around the shape's own vertical axis, then tilt it toward the viewer
     const cs = Math.cos(form.spin), sn = Math.sin(form.spin);
     const sx = h[0] * cs - h[2] * sn, sz = h[0] * sn + h[2] * cs;
@@ -1507,7 +1582,7 @@
     }
     form.name = shapeBag.pop();
     form.idx = SHAPES.indexOf(form.name);
-    form.tilt = { galaxy: -0.95, wave: -0.6, ring: 0.3, donut: -0.75, saturn: -0.4, pyramid: -0.2 }[form.name] || 0;
+    form.tilt = { galaxy: -0.95, wave: -0.6, ring: 0.3, donut: -0.75, saturn: -0.4, pyramid: -0.42, diamond: -0.38 }[form.name] || 0;
     form.spin = 0;
     form.phase = "gather";
     form.t = 0;
@@ -1516,16 +1591,21 @@
     // greedily hand each point to the nearest free orb so paths stay short
     const free = new Set(pool);
     for (const o of orbs) o.home = null;
-    for (const h of shapePoints(form.name, pool.length)) {
-      const t = homeWorld(h);
+    const homes = shapePoints(form.name, pool.length), spots = homes.map(homeWorld);
+    // orbs in a formation share one size, just under half the gap between neighbouring points,
+    // so lines read cleanly instead of big orbs swallowing the details
+    const gaps = spots.map((a) => Math.min(...spots.map((b) => (a === b ? Infinity : Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z))))).sort((a, b) => a - b);
+    form.fitR = clamp((gaps[gaps.length >> 1] || 60) * 0.46, 11, 30);
+    homes.forEach((h, k) => {
+      const t = spots[k];
       let best = null, bd = Infinity;
       for (const o of free) {
         const d = (o.x - t.x) ** 2 + (o.y - t.y) ** 2 + (o.z - t.z) ** 2;
         if (d < bd) { bd = d; best = o; }
       }
       if (best) { best.home = h; free.delete(best); }
-    }
-    caption(form.name);
+    });
+    caption(SHAPE_LABEL[form.name] || form.name);
     swell();
   }
 
@@ -1546,7 +1626,7 @@
     }
     form.t += dt;
     form.spin += FLAT.has(form.name) ? 0 : dt * 0.3;
-    if (FLAT.has(form.name)) form.spin = Math.sin(time * 0.35) * 0.55;
+    if (FLAT.has(form.name)) form.spin = Math.sin(time * 0.3) * 0.28; // flat shapes sway gently so they stay readable
 
     // Shapes mode keeps enough orbs around to draw with
     if (MODES[settings.mode].id === "shapes") {
@@ -1763,9 +1843,11 @@
     // ease every orb toward its target size
     const cap = maxR();
     for (const o of orbs) {
-      const tr = Math.min(cap, o.base * settings.size * o.own);
+      const fitted = o.home && formHolding();
+      // a touch of variety keeps a formation from looking stamped out
+      const tr = fitted ? Math.min(cap, form.fitR * (0.94 + 0.12 * ((o.phase / TAU) % 1))) : Math.min(cap, o.base * settings.size * o.own);
       if (Math.abs(o.r - tr) > 0.05) {
-        o.r = lerp(o.r, tr, Math.min(1, dt * 6));
+        o.r = lerp(o.r, tr, Math.min(1, dt * (fitted ? 3 : 6)));
         o.note = noteFor(o.r);
       }
     }
@@ -2294,7 +2376,7 @@
 
   // dev hook: open with ?debug to inspect from the console
   if (new URLSearchParams(location.search).has("debug")) {
-    window.__drift = { music, get ac() { return ac; }, orbs, update, render, popOrb, makeOrb, popAll, settings, ptr, proj, form, setSize, homeWorld, shape(name) { shapeBag = [name]; form.phase = "rest"; form.t = 99; }, set lastInteract(v) { lastInteract = v; }, get D() { return D; }, get well() { return well; } };
+    window.__drift = { music, get ac() { return ac; }, orbs, update, render, popOrb, makeOrb, popAll, settings, ptr, proj, form, setSize, homeWorld, shapePoints, shape(name) { shapeBag = [name]; form.phase = "rest"; form.t = 99; }, set lastInteract(v) { lastInteract = v; }, get D() { return D; }, get well() { return well; } };
   }
 
   resize();
