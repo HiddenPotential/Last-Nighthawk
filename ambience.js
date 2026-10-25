@@ -151,43 +151,46 @@
     }, () => 30 * amount);
   }
 
+  // waves that swell, break into foam and wash back out
+  function wavesLayer(out, timers, amount) {
+    const ac = Z.ac;
+    bed(out, [["lowpass", 220]], 0.08 * amount); // the deep, constant roll
+    // two wave voices so each wave can overlap the last one's wash
+    const voices = [0, 1].map(() => {
+      const body = bed(out, [["lowpass", 500, 0.5]], 0.0001);
+      const foam = bed(out, [["highpass", 2500]], 0.0001);
+      const pan = ac.createStereoPanner ? ac.createStereoPanner() : null;
+      if (pan) { body.g.disconnect(); foam.g.disconnect(); body.g.connect(pan); foam.g.connect(pan); pan.connect(out); }
+      return { body, foam, pan };
+    });
+    let turn = 0;
+    every(timers, (t) => {
+      const v = voices[turn++ % 2], D = rand(7, 11), rise = D * rand(0.35, 0.45), peak = rand(0.12, 0.2) * amount;
+      if (v.pan) v.pan.pan.setValueAtTime(rand(-0.45, 0.45), t);
+      const g = v.body.g.gain, f = v.body.f.frequency, fg = v.foam.g.gain;
+      g.cancelScheduledValues(t); f.cancelScheduledValues(t); fg.cancelScheduledValues(t);
+      // swell, break, then wash back out
+      g.setValueAtTime(Math.max(0.0001, g.value), t);
+      g.linearRampToValueAtTime(peak, t + rise);
+      g.exponentialRampToValueAtTime(0.004, t + D);
+      f.setValueAtTime(380, t);
+      f.exponentialRampToValueAtTime(2200, t + rise);
+      f.exponentialRampToValueAtTime(500, t + D);
+      fg.setValueAtTime(0.0001, t);
+      fg.linearRampToValueAtTime(0.0001, t + rise * 0.85);
+      fg.linearRampToValueAtTime(peak * 0.28, t + rise + 0.6);
+      fg.exponentialRampToValueAtTime(0.0005, t + D * 0.95);
+      return D * rand(0.55, 0.8);
+    }, 0.2);
+  }
+
   // ---------- Tracks ----------
   const TRACKS = [
     { id: "off", label: "Off", ico: "∅" },
     { id: "rain", label: "Rain", ico: "☂︎", gain: 1, make: (out, timers) => rainLayer(out, timers, false) },
     {
       id: "sea", label: "Sea", ico: "≋", gain: 2.2,
-      make(out, timers) {
-        const ac = Z.ac;
-        bed(out, [["lowpass", 220]], 0.08); // the deep, constant roll
-        // two wave voices so each wave can overlap the last one's wash
-        const voices = [0, 1].map(() => {
-          const body = bed(out, [["lowpass", 500, 0.5]], 0.0001);
-          const foam = bed(out, [["highpass", 2500]], 0.0001);
-          const pan = ac.createStereoPanner ? ac.createStereoPanner() : null;
-          if (pan) { body.g.disconnect(); foam.g.disconnect(); body.g.connect(pan); foam.g.connect(pan); pan.connect(out); }
-          return { body, foam, pan };
-        });
-        let turn = 0;
-        every(timers, (t) => {
-          const v = voices[turn++ % 2], D = rand(7, 11), rise = D * rand(0.35, 0.45), peak = rand(0.12, 0.2);
-          if (v.pan) v.pan.pan.setValueAtTime(rand(-0.45, 0.45), t);
-          const g = v.body.g.gain, f = v.body.f.frequency, fg = v.foam.g.gain;
-          g.cancelScheduledValues(t); f.cancelScheduledValues(t); fg.cancelScheduledValues(t);
-          // swell, break, then wash back out
-          g.setValueAtTime(Math.max(0.0001, g.value), t);
-          g.linearRampToValueAtTime(peak, t + rise);
-          g.exponentialRampToValueAtTime(0.004, t + D);
-          f.setValueAtTime(380, t);
-          f.exponentialRampToValueAtTime(2200, t + rise);
-          f.exponentialRampToValueAtTime(500, t + D);
-          fg.setValueAtTime(0.0001, t);
-          fg.linearRampToValueAtTime(0.0001, t + rise * 0.85);
-          fg.linearRampToValueAtTime(peak * 0.28, t + rise + 0.6);
-          fg.exponentialRampToValueAtTime(0.0005, t + D * 0.95);
-          return D * rand(0.55, 0.8);
-        }, 0.2);
-      },
+      make: (out, timers) => wavesLayer(out, timers, 1),
     },
     {
       id: "storm", label: "Storm", ico: "ϟ", gain: 0.8,
@@ -246,6 +249,68 @@
         sprinkler(timers, (t) => { tick(out, t, rand(400, 900), 2, 0.05, 0.1, rand(-0.4, 0.4)); chirp(out, t, 220, 90, 0.08, 0.04); }, () => 0.3);
       },
     },
+    {
+      id: "thunder", label: "Thunder", ico: "☁\uFE0E", gain: 2.2,
+      make(out, timers) {
+        bed(out, [["lowpass", 90]], 0.05); // the heavy air before a storm
+        windLayer(out, timers, 0.35);
+        every(timers, (t) => { thunder(out, t); return rand(6, 16); }, rand(1, 3));
+      },
+    },
+    {
+      id: "seabirds", label: "Seabirds", ico: "⌒", gain: 2,
+      make(out, timers) {
+        wavesLayer(out, timers, 0.85);
+        windLayer(out, timers, 0.3);
+        every(timers, (t) => { gull(out, t); return rand(2, 7); }, 1);
+      },
+    },
+    {
+      id: "waterfall", label: "Waterfall", ico: "⫶", gain: 1.4,
+      make(out, timers) {
+        bed(out, [["highpass", 200], ["lowpass", 3200]], 0.1); // the falling sheet
+        bed(out, [["lowpass", 140]], 0.12, -0.2); // the plunge pool's roar
+        const mid = bed(out, [["bandpass", 900, 0.8]], 0.04, 0.25);
+        every(timers, (t) => { mid.g.gain.setTargetAtTime(rand(0.025, 0.06), t, 0.8); mid.f.frequency.setTargetAtTime(rand(600, 1300), t, 1); return rand(0.8, 2); }, 0.1);
+        sprinkler(timers, (t) => tick(out, t, rand(1500, 5000), 1.2, rand(0.01, 0.025), rand(0.008, 0.02), rand(-0.9, 0.9)), () => 60);
+      },
+    },
+    {
+      id: "cave", label: "Cave", ico: "◠", gain: 3.5,
+      make(out, timers) {
+        // every sound in here comes back off the walls
+        const ac = Z.ac, room = ac.createGain(), echo = ac.createDelay(2), fb = ac.createGain(), tone = ac.createBiquadFilter();
+        echo.delayTime.value = 0.42;
+        fb.gain.value = 0.45;
+        tone.type = "lowpass";
+        tone.frequency.value = 2200;
+        room.connect(out);
+        room.connect(echo);
+        echo.connect(tone).connect(fb).connect(echo);
+        tone.connect(out);
+        bed(out, [["lowpass", 120]], 0.035); // still, cold air
+        every(timers, (t) => {
+          const f = rand(1400, 3200);
+          chirp(room, t, f, f * 0.5, 0.07, rand(0.02, 0.05), rand(-0.8, 0.8));
+          return rand(0.6, 3.5);
+        }, 0.5);
+        // a big drop into a deep pool, far off
+        every(timers, (t) => { chirp(room, t, rand(500, 800), 180, 0.18, 0.04, rand(-0.6, 0.6)); return rand(6, 15); }, 4);
+      },
+    },
+    {
+      id: "chimes", label: "Chimes", ico: "♪", gain: 1.8,
+      make(out, timers) {
+        windLayer(out, timers, 0.4);
+        // a gust sets the chimes knocking together for a moment
+        every(timers, (t) => {
+          const n = 2 + ((Math.random() * 6) | 0);
+          let tt = t;
+          for (let k = 0; k < n; k++) { chime(out, tt, CHIME[(Math.random() * CHIME.length) | 0], rand(0.015, 0.035), rand(-0.5, 0.5)); tt += rand(0.08, 0.4); }
+          return rand(2, 7);
+        }, 0.5);
+      },
+    },
   ];
 
   function thunder(out, t) {
@@ -294,6 +359,57 @@
       connectPanned(g, out, pan);
       o.start(t); lfo.start(t);
       o.stop(t + 0.5); lfo.stop(t + 0.5);
+    }
+  }
+
+  // a herring gull: a long rising-and-falling cry, or a run of short laughing calls
+  function gull(out, t) {
+    const ac = Z.ac, pan = rand(-0.9, 0.9), far = rand(0.35, 1);
+    const call = (t0, f0, f1, f2, dur, vol) => {
+      const o = ac.createOscillator(), vib = ac.createOscillator(), vibAmt = ac.createGain(), bp = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.linearRampToValueAtTime(f1, t0 + dur * 0.3);
+      o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+      vib.frequency.value = rand(20, 32);
+      vibAmt.gain.value = f1 * 0.03;
+      vib.connect(vibAmt).connect(o.frequency);
+      bp.type = "bandpass";
+      bp.frequency.value = 2200;
+      bp.Q.value = 1.6;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(vol * far, t0 + 0.03);
+      g.gain.setValueAtTime(vol * far, t0 + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(bp).connect(g);
+      connectPanned(g, out, pan);
+      o.start(t0); vib.start(t0);
+      o.stop(t0 + dur + 0.02); vib.stop(t0 + dur + 0.02);
+    };
+    if (Math.random() < 0.5) {
+      const f = rand(1100, 1500);
+      call(t, f, f * 1.6, f * 0.75, rand(0.45, 0.7), 0.03);
+      if (Math.random() < 0.5) call(t + rand(0.7, 1), f * 1.05, f * 1.55, f * 0.8, 0.5, 0.025);
+    } else {
+      const n = 4 + ((Math.random() * 5) | 0), f = rand(1500, 1900);
+      for (let k = 0; k < n; k++) call(t + k * rand(0.14, 0.18), f * (1 - k * 0.03), f * 1.1 * (1 - k * 0.03), f * 0.8 * (1 - k * 0.04), 0.12, 0.024);
+    }
+  }
+
+  // wind chimes: metal tubes tuned to a pentatonic scale, with slightly inharmonic overtones
+  const CHIME = [784, 880, 1047, 1175, 1319, 1568, 1760];
+  function chime(out, t, f, vol, pan) {
+    const ac = Z.ac, g = ac.createGain();
+    connectPanned(g, out, pan);
+    for (const [mult, v, decay] of [[1, 1, 4.5], [2.76, 0.35, 2.2], [5.4, 0.12, 1.1]]) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = f * mult * rand(0.998, 1.002);
+      og.gain.setValueAtTime(0, t);
+      og.gain.linearRampToValueAtTime(vol * v, t + 0.004);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + decay + 0.05);
     }
   }
 

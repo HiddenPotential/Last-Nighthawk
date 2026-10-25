@@ -104,7 +104,7 @@
     let node = g;
     if (ac.createStereoPanner) {
       const p = ac.createStereoPanner();
-      p.pan.value = clamp(pan, -0.9, 0.9);
+      p.pan.value = clamp(pan || 0, -0.9, 0.9); // NaN when the room hasn't been sized yet
       g.connect(p);
       node = p;
     }

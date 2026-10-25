@@ -20,6 +20,7 @@ The switcher in the top-left corner moves between calm places. Each one remember
 - **Pond**: a top-down koi pond (see [Pond](#pond)).
 - **Sand**: a top-down zen sand garden (see [Sand](#sand)).
 - **Lanterns**: a night lake where you light paper lanterns (see [Lanterns](#lanterns)).
+- **Muyu**: a wooden fish in a candlelit temple (see [Wooden fish](#wooden-fish)).
 
 ## Play
 
@@ -95,6 +96,11 @@ The **Sounds** button in the top-right corner plays a soundscape under whichever
 - **Forest**: birdsong (trills, whistles, warbles) over a breeze and a distant brook
 - **Night**: crickets and the odd frog
 - **Fire**: a crackling campfire with the occasional pop
+- **Thunder**: thunder on its own, near and far, in heavy still air
+- **Seabirds**: waves on the shore with gulls crying and laughing overhead
+- **Waterfall**: a falling sheet of water over a deep plunge-pool roar
+- **Cave**: slow drips echoing off stone, and the odd drop into a deep pool
+- **Chimes**: wind chimes knocking together whenever the breeze picks up
 
 The slider sets its volume. Your choice is remembered and starts again on your first tap; the Sound button mutes it along with everything else.
 
@@ -112,6 +118,19 @@ A lake at night under layered mountains: stars, a crescent moon laid across the 
 
 The bar has **Release**, lantern **color** (Amber, Rose, Moon, Jade or Mixed), music and sound. Now and then a shooting star crosses, someone far off lets a lantern go, and a temple bell sounds across the water. You hear each wick catch, a chime as a lantern lifts off, the water lapping and the breeze you make. The color is remembered.
 
+## Wooden fish
+
+A muyu, the hollow wooden fish that monks tap while chanting, rests on a red silk cushion on a temple altar, between candles, a singing bowl and smouldering incense, under a hanging ensō scroll.
+
+| Do this                | What happens                                                         |
+| ---------------------- | -------------------------------------------------------------------- |
+| Tap anywhere           | The mallet strikes the fish: a hollow *tok*, a warm glow, "Merit +1" floats up |
+| Hold                   | Keep a steady chant at the tempo for as long as you hold              |
+| Tap the singing bowl   | It rings for a long time, slowly beating, with light shimmering off its rim |
+| <kbd>Space</kbd>       | Strike once                                                           |
+
+Every strike adds to a merit count on the front of the altar, kept between visits. The bar has **Auto** (the fish keeps the rhythm by itself, with a human wobble, and rings the bowl every 64 strikes), a **tempo** slider (40 to 160 bpm), what each strike earns (**Merit**, 功德, Peace, Calm, Wisdom, Luck), a **Bowl** button, music and sound. The incense smoke curls up and sways when you strike, and now and then a great temple bell sounds far off.
+
 ## Files
 
 - `index.html`: page and controls
@@ -120,7 +139,8 @@ The bar has **Release**, lantern **color** (Amber, Rose, Moon, Jade or Mixed), m
 - `pond.js`: the koi pond
 - `sand.js`: the sand garden
 - `lanterns.js`: the lantern lake
+- `woodfish.js`: the wooden fish
 - `places.js`: the place switcher
 - `ambience.js`: the ambient soundscapes
 
-Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand` and `window.__lanterns` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns` and `window.__woodfish` in the console for testing.

@@ -84,17 +84,38 @@
     <button id="lanterns-sound" type="button" title="Sound"><span class="ico" id="lanterns-sound-ico">♪</span><span class="lbl" id="lanterns-sound-lbl">Sound on</span></button>
   </nav>
 
+  <canvas id="woodfish" data-for="woodfish" class="away" aria-label="A wooden fish (muyu) you can strike"></canvas>
+
+  <div id="woodfish-title" class="title away" data-for="woodfish">
+    <h1>Wooden fish</h1>
+    <p>Tap to strike the muyu · Hold to keep a steady chant · Tap the bowl to ring it</p>
+  </div>
+
+  <nav id="woodfish-bar" class="bar away" data-for="woodfish" aria-label="Wooden fish settings">
+    <button id="woodfish-auto" type="button" title="Strike on its own, at the tempo" aria-pressed="false"><span class="ico">↻</span><span class="lbl" id="woodfish-auto-lbl">Auto off</span></button>
+    <label class="size" id="woodfish-tempo-wrap" title="Tempo">
+      <input id="woodfish-tempo" type="range" min="40" max="160" step="1" value="72" aria-label="Tempo in beats per minute" />
+      <span class="lbl bpm" id="woodfish-bpm">72 bpm</span>
+    </label>
+    <button id="woodfish-words" type="button" title="What each strike earns"><span class="ico">+1</span><span class="lbl" id="woodfish-words-lbl">Merit</span></button>
+    <button id="woodfish-bowl" type="button" title="Ring the singing bowl"><span class="ico">◡</span><span class="lbl">Bowl</span></button>
+    <button id="woodfish-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="woodfish-music-lbl">Music on</span></button>
+    <button id="woodfish-sound" type="button" title="Sound"><span class="ico" id="woodfish-sound-ico">♪</span><span class="lbl" id="woodfish-sound-lbl">Sound on</span></button>
+  </nav>
+
   <nav id="places" aria-label="Places">
     <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
     <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
     <button type="button" data-place="sand" aria-pressed="false"><span class="ico">≡</span><span class="lbl">Sand</span></button>
     <button type="button" data-place="lanterns" aria-pressed="false"><span class="ico">⌂</span><span class="lbl">Lanterns</span></button>
+    <button type="button" data-place="woodfish" aria-pressed="false" title="Wooden fish"><span class="ico">◖</span><span class="lbl">Muyu</span></button>
   </nav>
 
   <script src="game.js"></script>
   <script src="pond.js"></script>
   <script src="sand.js"></script>
   <script src="lanterns.js"></script>
+  <script src="woodfish.js"></script>
   <div id="sounds">
     <button id="sounds-btn" type="button" aria-expanded="false" aria-controls="sounds-panel" title="Ambient sounds">
       <span class="ico" id="sounds-ico">∿</span><span class="lbl" id="sounds-lbl">Sounds</span>

@@ -12,7 +12,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#c, #pond, #sand, #lanterns {
+#c, #pond, #sand, #lanterns, #woodfish {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -341,3 +341,16 @@ body[data-place="sand"] #places button[aria-pressed="true"] { background: rgba(7
 @media (max-width: 520px) {
   #sounds-btn .lbl { display: none; }
 }
+
+/* the place switcher is wide now: below it, titles sit under it instead of beside it */
+@media (max-width: 1400px) and (min-width: 521px) {
+  .title { top: calc(max(16px, env(safe-area-inset-top)) + 56px); }
+}
+
+/* ---------- Wooden fish ---------- */
+#woodfish { cursor: pointer; }
+#woodfish-title h1 { text-shadow: 0 0 30px rgba(255, 170, 90, 0.5); }
+#woodfish-tempo-wrap { transition: opacity 0.2s ease; }
+#woodfish-tempo-wrap.off { opacity: 0.45; }
+#woodfish-tempo-wrap .bpm { font-size: 0.78rem; min-width: 52px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+#woodfish-words .ico { width: auto; font-size: 0.75rem; font-weight: 600; }
