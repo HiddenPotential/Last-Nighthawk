@@ -22,6 +22,7 @@ The switcher in the top-left corner moves between calm places. Each one remember
 - **Lanterns**: a night lake where you light paper lanterns (see [Lanterns](#lanterns)).
 - **Muyu**: a wooden fish in a candlelit temple (see [Wooden fish](#wooden-fish)).
 - **Bamboo**: a misty bamboo grove with a shishi-odoshi (see [Bamboo](#bamboo)).
+- **Window**: rain on a windowpane at night (see [Window](#window)).
 
 ## Play
 
@@ -146,6 +147,18 @@ A misty bamboo grove with a shishi-odoshi. Water trickles from a long bamboo spo
 
 The bar has **Tip**, **flow** (Slow, Steady or Fast, which sets the rhythm of the knocks), **breeze** (Still, Breeze or Windy), music and sound. Flow and breeze are remembered.
 
+## Window
+
+A windowsill on a rainy evening, a mug of tea steaming on the sill, blurred lights beyond the glass. Raindrops land, merge when they touch, and once they're heavy enough they slide down in stop-start runs, swallowing the drops in their path and leaving a trail of tiny beads. Each larger drop is a little lens that shows the view upside down. Condensation fogs the glass, thicker toward the bottom.
+
+| Do this                    | What happens                                                    |
+| -------------------------- | --------------------------------------------------------------- |
+| Drag across the glass      | Wipe the fog clear (it creeps back over a minute or so) and sweep the drops away |
+| Hold, then drag            | Breathe on the glass to fog it up, then draw in the fog with your finger |
+| Tap                        | Tap the glass: a soft tink, and nearby drops shiver loose and run |
+
+The bar has the **rain** (Drizzle, Rain, or Storm with distant lightning and thunder), the **view** (City lights, Forest, Dusk), **fog** on or off, music and sound. You hear the rain outside, drops ticking on the glass, and a soft swish when you wipe. The settings are remembered.
+
 ## Files
 
 - `index.html`: page and controls
@@ -156,7 +169,8 @@ The bar has **Tip**, **flow** (Slow, Steady or Fast, which sets the rhythm of th
 - `lanterns.js`: the lantern lake
 - `woodfish.js`: the wooden fish
 - `bamboo.js`: the bamboo grove
+- `window.js`: the rainy window
 - `places.js`: the place switcher
 - `ambience.js`: the ambient soundscapes
 
-Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns`, `window.__woodfish` and `window.__bamboo` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns`, `window.__woodfish`, `window.__bamboo` and `window.__window` in the console for testing.

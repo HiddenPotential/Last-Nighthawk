@@ -12,7 +12,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#c, #pond, #sand, #lanterns, #woodfish, #bamboo {
+#c, #pond, #sand, #lanterns, #woodfish, #bamboo, #pane {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -359,3 +359,16 @@ body[data-place="sand"] #places button[aria-pressed="true"] { background: rgba(7
 #bamboo { cursor: pointer; }
 #bamboo-title h1 { text-shadow: 0 0 30px rgba(200, 230, 160, 0.45); }
 #bamboo-title p { text-shadow: 0 1px 10px rgba(10, 22, 6, 0.85); opacity: 0.8; }
+
+/* seven places: below tablet width the switcher shows icons only (each has a title tooltip) */
+@media (max-width: 900px) {
+  #places .lbl { display: none; }
+}
+@media (max-width: 520px) {
+  #places { gap: 2px; }
+  #places button { padding: 6px 8px; }
+}
+
+/* ---------- Window ---------- */
+#pane { cursor: pointer; }
+#pane-title h1 { text-shadow: 0 0 30px rgba(170, 190, 255, 0.5); }

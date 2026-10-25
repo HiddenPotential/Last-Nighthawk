@@ -118,6 +118,21 @@
     <button id="bamboo-sound" type="button" title="Sound"><span class="ico" id="bamboo-sound-ico">♪</span><span class="lbl" id="bamboo-sound-lbl">Sound on</span></button>
   </nav>
 
+  <canvas id="pane" data-for="window" class="away" aria-label="Rain on a window at night"></canvas>
+
+  <div id="pane-title" class="title away" data-for="window">
+    <h1>Window</h1>
+    <p>Drag to wipe the glass · Hold to breathe on it, then draw · Tap to tap the glass</p>
+  </div>
+
+  <nav id="pane-bar" class="bar away" data-for="window" aria-label="Window settings">
+    <button id="pane-rain" type="button" title="How hard it rains"><span class="ico">⁞</span><span class="lbl" id="pane-rain-lbl">Rain</span></button>
+    <button id="pane-view" type="button" title="The view outside"><span class="ico">◐</span><span class="lbl" id="pane-view-lbl">City</span></button>
+    <button id="pane-fog" type="button" title="Condensation on the glass" aria-pressed="true"><span class="ico">≋</span><span class="lbl" id="pane-fog-lbl">Fog on</span></button>
+    <button id="pane-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="pane-music-lbl">Music on</span></button>
+    <button id="pane-sound" type="button" title="Sound"><span class="ico" id="pane-sound-ico">♪</span><span class="lbl" id="pane-sound-lbl">Sound on</span></button>
+  </nav>
+
   <nav id="places" aria-label="Places">
     <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
     <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
@@ -125,6 +140,7 @@
     <button type="button" data-place="lanterns" aria-pressed="false"><span class="ico">⌂</span><span class="lbl">Lanterns</span></button>
     <button type="button" data-place="woodfish" aria-pressed="false" title="Wooden fish"><span class="ico">◖</span><span class="lbl">Muyu</span></button>
     <button type="button" data-place="bamboo" aria-pressed="false" title="Bamboo grove"><span class="ico">ǁ</span><span class="lbl">Bamboo</span></button>
+    <button type="button" data-place="window" aria-pressed="false" title="Rainy window"><span class="ico">⊞</span><span class="lbl">Window</span></button>
   </nav>
 
   <script src="game.js"></script>
@@ -133,6 +149,7 @@
   <script src="lanterns.js"></script>
   <script src="woodfish.js"></script>
   <script src="bamboo.js"></script>
+  <script src="window.js"></script>
   <div id="sounds">
     <button id="sounds-btn" type="button" aria-expanded="false" aria-controls="sounds-panel" title="Ambient sounds">
       <span class="ico" id="sounds-ico">∿</span><span class="lbl" id="sounds-lbl">Sounds</span>
