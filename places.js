@@ -1,12 +1,12 @@
-// Places: switch between the orb room, the koi pond, the sand garden, the lantern lake and the wooden fish.
+// Places: switch between the orb room, the koi pond, the sand garden, the lantern lake, the wooden fish and the bamboo grove.
 // Each place's elements carry data-for="<place>"; the rest fade out (class "away").
-// game.js, pond.js, sand.js, lanterns.js and woodfish.js read document.body.dataset.place and pause while away.
+// game.js, pond.js, sand.js, lanterns.js, woodfish.js and bamboo.js read document.body.dataset.place and pause while away.
 (() => {
   "use strict";
   const KEY = "drift-place";
-  const PLACES = ["orbs", "pond", "sand", "lanterns", "woodfish"];
-  const CHIME = { orbs: [9, 12], pond: [7, 10], sand: [5, 8], lanterns: [6, 11], woodfish: [4, 9] };
-  const THEME_COLOR = { pond: "#06211f", sand: "#cfc4ae", lanterns: "#0b0c26", woodfish: "#1d0e09" };
+  const PLACES = ["orbs", "pond", "sand", "lanterns", "woodfish", "bamboo"];
+  const CHIME = { orbs: [9, 12], pond: [7, 10], sand: [5, 8], lanterns: [6, 11], woodfish: [4, 9], bamboo: [7, 12] };
+  const THEME_COLOR = { pond: "#06211f", sand: "#cfc4ae", lanterns: "#0b0c26", woodfish: "#1d0e09", bamboo: "#16200f" };
 
   let place = "orbs";
   try { place = localStorage.getItem(KEY) || "orbs"; } catch (_) { /* storage unavailable */ }

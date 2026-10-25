@@ -103,12 +103,28 @@
     <button id="woodfish-sound" type="button" title="Sound"><span class="ico" id="woodfish-sound-ico">♪</span><span class="lbl" id="woodfish-sound-lbl">Sound on</span></button>
   </nav>
 
+  <canvas id="bamboo" data-for="bamboo" class="away" aria-label="A bamboo grove with a shishi-odoshi water feature"></canvas>
+
+  <div id="bamboo-title" class="title away" data-for="bamboo">
+    <h1>Bamboo</h1>
+    <p>Drag to send a breeze · Tap a stalk to knock it · Tap the bamboo tube to tip it · Tap the basin to ripple it</p>
+  </div>
+
+  <nav id="bamboo-bar" class="bar away" data-for="bamboo" aria-label="Bamboo grove settings">
+    <button id="bamboo-tip" type="button" title="Tip the bamboo tube (Space)"><span class="ico">⤵</span><span class="lbl">Tip</span></button>
+    <button id="bamboo-flow" type="button" title="How fast the water runs"><span class="ico">⋮</span><span class="lbl" id="bamboo-flow-lbl">Steady</span></button>
+    <button id="bamboo-breeze" type="button" title="Breeze"><span class="ico">∿</span><span class="lbl" id="bamboo-breeze-lbl">Breeze</span></button>
+    <button id="bamboo-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="bamboo-music-lbl">Music on</span></button>
+    <button id="bamboo-sound" type="button" title="Sound"><span class="ico" id="bamboo-sound-ico">♪</span><span class="lbl" id="bamboo-sound-lbl">Sound on</span></button>
+  </nav>
+
   <nav id="places" aria-label="Places">
     <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
     <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
     <button type="button" data-place="sand" aria-pressed="false"><span class="ico">≡</span><span class="lbl">Sand</span></button>
     <button type="button" data-place="lanterns" aria-pressed="false"><span class="ico">⌂</span><span class="lbl">Lanterns</span></button>
     <button type="button" data-place="woodfish" aria-pressed="false" title="Wooden fish"><span class="ico">◖</span><span class="lbl">Muyu</span></button>
+    <button type="button" data-place="bamboo" aria-pressed="false" title="Bamboo grove"><span class="ico">ǁ</span><span class="lbl">Bamboo</span></button>
   </nav>
 
   <script src="game.js"></script>
@@ -116,6 +132,7 @@
   <script src="sand.js"></script>
   <script src="lanterns.js"></script>
   <script src="woodfish.js"></script>
+  <script src="bamboo.js"></script>
   <div id="sounds">
     <button id="sounds-btn" type="button" aria-expanded="false" aria-controls="sounds-panel" title="Ambient sounds">
       <span class="ico" id="sounds-ico">∿</span><span class="lbl" id="sounds-lbl">Sounds</span>

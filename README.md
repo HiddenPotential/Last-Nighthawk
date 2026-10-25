@@ -21,6 +21,7 @@ The switcher in the top-left corner moves between calm places. Each one remember
 - **Sand**: a top-down zen sand garden (see [Sand](#sand)).
 - **Lanterns**: a night lake where you light paper lanterns (see [Lanterns](#lanterns)).
 - **Muyu**: a wooden fish in a candlelit temple (see [Wooden fish](#wooden-fish)).
+- **Bamboo**: a misty bamboo grove with a shishi-odoshi (see [Bamboo](#bamboo)).
 
 ## Play
 
@@ -131,6 +132,20 @@ A muyu, the hollow wooden fish that monks tap while chanting, rests on a red sil
 
 Every strike adds to a merit count on the front of the altar, kept between visits. The bar has **Auto** (the fish keeps the rhythm by itself, with a human wobble, and rings the bowl every 64 strikes), a **tempo** slider (40 to 160 bpm), what each strike earns (**Merit**, 功德, Peace, Calm, Wisdom, Luck), a **Bowl** button, music and sound. The incense smoke curls up and sways when you strike, and now and then a great temple bell sounds far off.
 
+## Bamboo
+
+A misty bamboo grove with a shishi-odoshi. Water trickles from a long bamboo spout into a tube on a pivot, and its pitch rises as the tube fills. When it's full the tube tips, empties into a stone basin, swings back and knocks against an upright stone: *klok*. Leaves drift down, sun shafts slant through the stalks, and now and then a bush warbler sings.
+
+| Do this                | What happens                                                    |
+| ---------------------- | --------------------------------------------------------------- |
+| Drag across the grove  | A gust follows your hand: the stalks bend and sway back, leaves let go, and you hear the rustle |
+| Tap a stalk            | Knock it: a hollow tok (higher for thinner stalks), it sways and drops a few leaves |
+| Tap the bamboo tube    | Tip it early (it needs to be partly full)                         |
+| Tap the basin          | Ripple the water                                                |
+| <kbd>Space</kbd>       | Tip the tube                                                    |
+
+The bar has **Tip**, **flow** (Slow, Steady or Fast, which sets the rhythm of the knocks), **breeze** (Still, Breeze or Windy), music and sound. Flow and breeze are remembered.
+
 ## Files
 
 - `index.html`: page and controls
@@ -140,7 +155,8 @@ Every strike adds to a merit count on the front of the altar, kept between visit
 - `sand.js`: the sand garden
 - `lanterns.js`: the lantern lake
 - `woodfish.js`: the wooden fish
+- `bamboo.js`: the bamboo grove
 - `places.js`: the place switcher
 - `ambience.js`: the ambient soundscapes
 
-Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns` and `window.__woodfish` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns`, `window.__woodfish` and `window.__bamboo` in the console for testing.

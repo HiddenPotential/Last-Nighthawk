@@ -12,7 +12,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#c, #pond, #sand, #lanterns, #woodfish {
+#c, #pond, #sand, #lanterns, #woodfish, #bamboo {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -342,8 +342,8 @@ body[data-place="sand"] #places button[aria-pressed="true"] { background: rgba(7
   #sounds-btn .lbl { display: none; }
 }
 
-/* the place switcher is wide now: below it, titles sit under it instead of beside it */
-@media (max-width: 1400px) and (min-width: 521px) {
+/* the place switcher is wide now, so titles sit under it instead of beside it */
+@media (min-width: 521px) {
   .title { top: calc(max(16px, env(safe-area-inset-top)) + 56px); }
 }
 
@@ -354,3 +354,8 @@ body[data-place="sand"] #places button[aria-pressed="true"] { background: rgba(7
 #woodfish-tempo-wrap.off { opacity: 0.45; }
 #woodfish-tempo-wrap .bpm { font-size: 0.78rem; min-width: 52px; opacity: 0.8; font-variant-numeric: tabular-nums; }
 #woodfish-words .ico { width: auto; font-size: 0.75rem; font-weight: 600; }
+
+/* ---------- Bamboo ---------- */
+#bamboo { cursor: pointer; }
+#bamboo-title h1 { text-shadow: 0 0 30px rgba(200, 230, 160, 0.45); }
+#bamboo-title p { text-shadow: 0 1px 10px rgba(10, 22, 6, 0.85); opacity: 0.8; }
