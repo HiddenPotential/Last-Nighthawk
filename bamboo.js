@@ -45,8 +45,9 @@
   });
 
   // ---------- Scene ----------
-  let stalks = [], framers = [], moss = [], pebbles = [], canopy = [];
-  const drops = [], pours = [], ripples = [], leaves = [], flashes = [];
+  let stalks = [], framers = [], moss = [], pebbles = [], canopy = [], ghosts = [], flecks = [], tufts = [], steps = [], speckle = [];
+  const drops = [], pours = [], ripples = [], leaves = [], flashes = [], splashes = [];
+  const motes = Array.from({ length: 40 }, () => ({ x: Math.random(), y: Math.random(), p: rand(0, TAU), s: rand(0.01, 0.03), r: rand(0.6, 1.5) }));
   let time = 0, wind = 0, gust = 0;
 
   function makeScene() {
@@ -70,10 +71,25 @@
     moss = Array.from({ length: Math.ceil(W / (60 * U)) }, () => ({ x: rand(0, W), y: groundY + rand(-6, 30) * U, rx: rand(30, 80) * U, ry: rand(8, 18) * U, c: rand(-0.1, 0.12) }));
     pebbles = Array.from({ length: Math.ceil(W / (14 * U)) }, () => ({ x: rand(0, W), y: groundY + rand(8, 0.24 * H / U) * U, r: rand(2, 6) * U, l: rand(0.3, 0.9) }));
     canopy = Array.from({ length: Math.ceil(W / (9 * U)) }, () => ({ x: rand(-20, W + 20), y: rand(-10, H * 0.2), len: rand(26, 48) * U, a: rand(0.9, 2.3), p: rand(0, TAU), shade: rand(0, 0.5) }));
+    // the far grove, only just showing through the mist
+    ghosts = Array.from({ length: Math.ceil(W / (30 * U)) }, () => ({ x: rand(-10, W + 10), w: rand(2, 5) * U, top: rand(-20, H * 0.15), lean: rand(-0.02, 0.02), p: rand(0, TAU) }));
+    // sun flecks on the ground through the leaves
+    flecks = Array.from({ length: Math.ceil(W / (40 * U)) }, () => ({ x: rand(0, W), y: groundY + rand(6, H - groundY - 10), r: rand(6, 18) * U, p: rand(0, TAU), s: rand(0.4, 1.1) }));
+    // tufts of grass at the stalks' feet and around the stones
+    const g = geom();
+    tufts = [];
+    for (const st of stalks) if (st.layer === 2) tufts.push({ x: st.x + rand(-8, 8) * U, y: st.base + rand(-2, 4) * U, n: 5 + ((Math.random() * 4) | 0), h: rand(10, 20) * U, p: rand(0, TAU) });
+    for (const x of [g.kx - 50 * U, g.kx + 40 * U, g.bx - g.brx * 0.9, g.bx + g.brx * 0.95, g.px - 18 * U]) tufts.push({ x: x + rand(-6, 6) * U, y: groundY + rand(2, 8) * U, n: 6 + ((Math.random() * 4) | 0), h: rand(12, 24) * U, p: rand(0, TAU) });
+    for (let i = 0; i < W / (90 * U); i++) tufts.push({ x: rand(0, W), y: groundY + rand(14, H - groundY - 20), n: 4 + ((Math.random() * 3) | 0), h: rand(8, 16) * U, p: rand(0, TAU) });
+    // three stepping stones leading in from the front
+    steps = [0, 1, 2].map((k) => ({ x: cx - 70 * U + k * 40 * U + rand(-10, 10) * U, y: H - (H - groundY) * (0.18 + k * 0.24), rx: (46 - k * 8) * U, ry: (13 - k * 2.2) * U, a: rand(-0.12, 0.12) }));
+    speckle = Array.from({ length: 60 }, () => ({ u: Math.random(), v: Math.random(), r: rand(0.6, 1.8), l: Math.random() < 0.5 }));
   }
 
   function makeStalk(x, w, layer, L) {
-    const s = { x, w, layer, mist: L.mist, base: L.base, sway: L.sway * rand(0.85, 1.15), seg: rand(55, 85) * U * (1 + layer * 0.25), phase: rand(0, TAU), b: 0, bv: 0, k: rand(11, 17), lean: rand(-0.025, 0.025), sprigs: [] };
+    // most culms are green, a few have aged to yellow-green or grown a deeper blue-green
+    const hue = Math.random(), tint = hue < 0.15 ? [150, 150, 70] : hue > 0.85 ? [60, 104, 64] : mix(STALK, [110, 140, 60], Math.random() * 0.5);
+    const s = { x, w, layer, mist: L.mist, base: L.base, sway: L.sway * rand(0.85, 1.15), seg: rand(55, 85) * U * (1 + layer * 0.25), phase: rand(0, TAU), b: 0, bv: 0, k: rand(11, 17), lean: rand(-0.025, 0.025), sprigs: [], tint };
     for (let y = s.base - s.seg; y > -40; y -= s.seg) {
       if (y < H * 0.5 && Math.random() < 0.55) s.sprigs.push({ y, side: Math.random() < 0.5 ? -1 : 1, n: 3 + ((Math.random() * 3) | 0), len: rand(20, 34) * U * (0.6 + layer * 0.3) });
     }
@@ -336,6 +352,7 @@
       if (intoTube) { drops.splice(i, 1); continue; }
       if (d.y >= g.rimY) {
         drops.splice(i, 1);
+        if (Math.random() < 0.5) splashes.push({ x: d.x, y: g.rimY, vx: rand(-30, 30) * U, vy: rand(-90, -40) * U, age: 0 });
         if ((rippleTimer -= 1) <= 0) { rippleTimer = 4; ripples.push({ x: d.x, y: g.rimY + rand(-2, 2) * U, age: 0, amp: 0.45 }); }
       }
     }
@@ -347,9 +364,19 @@
       d.age += dt;
       if (d.y >= g.rimY + rand(-3, 3) * U) {
         pours.splice(i, 1);
+        if (Math.random() < 0.3) splashes.push({ x: clamp(d.x, g.bx - g.brx * 0.8, g.bx + g.brx * 0.8), y: g.rimY, vx: rand(-60, 60) * U, vy: rand(-160, -60) * U, age: 0 });
         if (Math.random() < 0.15) ripples.push({ x: clamp(d.x, g.bx - g.brx * 0.7, g.bx + g.brx * 0.7), y: g.rimY + rand(-4, 4) * U, age: 0, amp: 0.9 });
       }
     }
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      const p = splashes[i];
+      p.age += dt;
+      p.vy += grav * 0.8 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.y > g.rimY + 2 * U && p.vy > 0) splashes.splice(i, 1);
+    }
+    if (splashes.length > 80) splashes.splice(0, splashes.length - 80);
     for (const r of ripples) r.age += dt;
     while (ripples.length && ripples[0].age > 1.8) ripples.shift();
     if (ripples.length > 40) ripples.splice(0, ripples.length - 40);
@@ -389,42 +416,86 @@
 
   // ---------- Render ----------
   function drawStalk(s, front = false) {
-    const col = mix(STALK, MIST, s.mist), dark = mix(col, [20, 30, 12], 0.35), light = mix(col, [230, 240, 190], 0.25);
-    const top = -40, steps = 12, h = s.base - top;
-    const pts = [];
-    for (let i = 0; i <= steps; i++) { const y = s.base - (h * i) / steps; pts.push([stalkX(s, y), y]); }
-    ctx.lineCap = "butt";
-    ctx.strokeStyle = css(col);
-    ctx.lineWidth = s.w;
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.stroke();
-    // a lit edge and a shaded edge give it roundness
-    for (const [off, c, wd] of [[-0.28, light, 0.22], [0.32, dark, 0.25]]) {
-      ctx.strokeStyle = css(c, front ? 0.7 : 0.55);
-      ctx.lineWidth = s.w * wd;
+    const col = mix(s.tint || STALK, MIST, s.mist), dark = mix(col, [20, 30, 12], 0.4), light = mix(col, [236, 244, 200], 0.32);
+    const top = -40;
+    const width = (y) => s.w * (1 - 0.14 * clamp((s.base - y) / H, 0, 1)); // a little slimmer toward the top
+    if (s.layer === 0) {
+      // far culms: a simple stroke is all the mist leaves
+      const steps = 8, h = s.base - top;
+      ctx.lineCap = "butt";
+      ctx.strokeStyle = css(col);
+      ctx.lineWidth = s.w;
       ctx.beginPath();
-      pts.forEach(([x, y], i) => (i ? ctx.lineTo(x + s.w * off, y) : ctx.moveTo(x + s.w * off, y)));
+      for (let i = 0; i <= steps; i++) { const y = s.base - (h * i) / steps; i ? ctx.lineTo(stalkX(s, y), y) : ctx.moveTo(stalkX(s, y), y); }
       ctx.stroke();
-    }
-    // nodes
-    for (let y = s.base - s.seg; y > top; y -= s.seg) {
-      const x = stalkX(s, y);
-      ctx.strokeStyle = css(dark, 0.9);
-      ctx.lineWidth = Math.max(1, s.w * 0.14);
-      ctx.beginPath(); ctx.moveTo(x - s.w * 0.62, y); ctx.lineTo(x + s.w * 0.62, y); ctx.stroke();
-      ctx.strokeStyle = css(light, 0.6);
-      ctx.lineWidth = Math.max(0.6, s.w * 0.07);
-      ctx.beginPath(); ctx.moveTo(x - s.w * 0.5, y - s.w * 0.14); ctx.lineTo(x + s.w * 0.5, y - s.w * 0.14); ctx.stroke();
+      ctx.strokeStyle = css(light, 0.35);
+      ctx.lineWidth = s.w * 0.25;
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) { const y = s.base - (h * i) / steps; i ? ctx.lineTo(stalkX(s, y) - s.w * 0.22, y) : ctx.moveTo(stalkX(s, y) - s.w * 0.22, y); }
+      ctx.stroke();
+    } else {
+      // each internode is a rounded tube: shaded across its width, lit from the left
+      for (let y0 = s.base; y0 > top; y0 -= s.seg) {
+        const y1 = Math.max(top, y0 - s.seg), ym = (y0 + y1) / 2;
+        const x0 = stalkX(s, y0), xm = stalkX(s, ym), x1 = stalkX(s, y1), w0 = width(y0) / 2, w1 = width(y1) / 2, wm = (w0 + w1) / 2;
+        const g = ctx.createLinearGradient(xm - wm, 0, xm + wm, 0);
+        g.addColorStop(0, css(dark));
+        g.addColorStop(0.18, css(mix(col, light, 0.55)));
+        g.addColorStop(0.32, css(light));
+        g.addColorStop(0.62, css(col));
+        g.addColorStop(1, css(mix(dark, [10, 16, 6], 0.3)));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(x0 - w0, y0);
+        ctx.quadraticCurveTo(xm - wm * 1.02, ym, x1 - w1, y1);
+        ctx.lineTo(x1 + w1, y1);
+        ctx.quadraticCurveTo(xm + wm * 1.02, ym, x0 + w0, y0);
+        ctx.closePath();
+        ctx.fill();
+        // the powdery white bloom just below each node
+        if (y1 > top) {
+          const bg = ctx.createLinearGradient(0, y1, 0, y1 + s.w * 0.9);
+          bg.addColorStop(0, `rgba(232,240,222,${front ? 0.32 : 0.24})`);
+          bg.addColorStop(1, "rgba(232,240,222,0)");
+          ctx.fillStyle = bg;
+          ctx.fillRect(x1 - w1, y1, w1 * 2, s.w * 0.9);
+        }
+      }
+      // nodes: a raised ring with a dark seam and a lit ridge
+      for (let y = s.base - s.seg; y > top; y -= s.seg) {
+        const x = stalkX(s, y), w = width(y) / 2;
+        ctx.fillStyle = css(mix(col, dark, 0.3));
+        ctx.beginPath(); ctx.ellipse(x, y, w * 1.1, Math.max(1.2, s.w * 0.1), 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = css(dark, 0.95);
+        ctx.lineWidth = Math.max(1, s.w * 0.07);
+        ctx.beginPath(); ctx.moveTo(x - w * 1.08, y + s.w * 0.04); ctx.lineTo(x + w * 1.08, y + s.w * 0.04); ctx.stroke();
+        ctx.strokeStyle = css(light, 0.75);
+        ctx.lineWidth = Math.max(0.6, s.w * 0.05);
+        ctx.beginPath(); ctx.moveTo(x - w * 0.95, y - s.w * 0.06); ctx.lineTo(x + w * 0.2, y - s.w * 0.06); ctx.stroke();
+      }
     }
     // sprigs of leaves from the upper nodes, swaying with the stalk
-    const lc = mix(LEAF, MIST, s.mist * 0.9);
-    ctx.fillStyle = css(lc, front ? 0.95 : 0.9);
+    const lc = mix(LEAF, MIST, s.mist * 0.9), lcLit = mix(lc, [190, 214, 120], 0.35 * (1 - s.mist)), lcDark = mix(lc, [20, 34, 12], 0.25);
     for (const sp of s.sprigs) {
       const x = stalkX(s, sp.y), sway = s.b * 4 + Math.sin(time * 1.4 + s.phase + sp.y * 0.01) * 0.06;
+      const tx = x + sp.side * (s.w * 0.4 + sp.len * 0.35), ty = sp.y + sp.len * 0.08;
+      if (s.layer >= 1) {
+        // the little twig the leaves hang from
+        ctx.strokeStyle = css(mix(col, dark, 0.4), 0.9);
+        ctx.lineWidth = Math.max(0.6, s.w * 0.06);
+        ctx.beginPath(); ctx.moveTo(x + sp.side * s.w * 0.4, sp.y); ctx.quadraticCurveTo(x + sp.side * sp.len * 0.25, sp.y - sp.len * 0.05, tx, ty); ctx.stroke();
+      }
       for (let k = 0; k < sp.n; k++) {
         const a = Math.PI / 2 - sp.side * (0.5 + k * 0.28) + sway, len = sp.len * (1 - k * 0.08);
-        leafShape(x + sp.side * s.w * 0.4, sp.y, a, len, len * 0.16);
+        const lx = s.layer >= 1 ? lerp(x + sp.side * s.w * 0.4, tx, k / sp.n) : x + sp.side * s.w * 0.4, ly = s.layer >= 1 ? lerp(sp.y, ty, k / sp.n) : sp.y;
+        ctx.fillStyle = css(k % 2 ? lcDark : lcLit, front ? 0.96 : 0.9);
+        leafShape(lx, ly, a, len, len * 0.15);
+        if (s.layer >= 2 || front) {
+          // the midrib
+          ctx.strokeStyle = css(mix(lcLit, [230, 240, 190], 0.3), 0.35);
+          ctx.lineWidth = Math.max(0.5, len * 0.025);
+          ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + Math.cos(a) * len * 0.9, ly + Math.sin(a) * len * 0.9); ctx.stroke();
+        }
       }
     }
   }
@@ -469,6 +540,15 @@
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, groundY);
 
+    // the far grove, ghostly in the mist
+    ctx.lineCap = "butt";
+    for (const gh of ghosts) {
+      ctx.strokeStyle = css(mix(STALK, MIST, 0.86), 0.7);
+      ctx.lineWidth = gh.w;
+      const lean = gh.lean + (wind + gust) * 0.01 + Math.sin(time * 0.6 + gh.p) * 0.002;
+      ctx.beginPath(); ctx.moveTo(gh.x, groundY - 60 * U); ctx.lineTo(gh.x + lean * H, gh.top); ctx.stroke();
+    }
+    mistBand(groundY - 200 * U, groundY - 40 * U, 0.35);
     for (const s of stalks) if (s.layer === 0) drawStalk(s);
     mistBand(groundY - 120 * U, groundY, 0.55);
     for (const s of stalks) if (s.layer === 1) drawStalk(s);
@@ -487,6 +567,13 @@
       ctx.closePath();
       ctx.fill();
     }
+    // pollen and motes drifting through the light
+    for (const m of motes) {
+      const x = ((m.x + time * m.s * 0.3 + (wind + gust) * 0.002 * time + Math.sin(time * 0.5 + m.p) * 0.01) % 1 + 1) % 1 * W;
+      const y = ((m.y + Math.sin(time * m.s * 3 + m.p) * 0.02) % 1) * groundY;
+      ctx.fillStyle = `rgba(255,250,220,${0.35 + 0.3 * Math.sin(time * 1.7 + m.p)})`;
+      ctx.beginPath(); ctx.arc(x, y, m.r * U, 0, TAU); ctx.fill();
+    }
     ctx.globalCompositeOperation = "source-over";
 
     // ground
@@ -499,13 +586,38 @@
     for (const m of moss) {
       ctx.fillStyle = css(mix([86, 118, 52], [30, 44, 20], 0.4 + m.c), 0.7);
       ctx.beginPath(); ctx.ellipse(m.x, m.y, m.rx, m.ry, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = css(mix([140, 170, 80], [60, 80, 36], 0.4 + m.c), 0.35); // its sunlit crown
+      ctx.beginPath(); ctx.ellipse(m.x - m.rx * 0.15, m.y - m.ry * 0.3, m.rx * 0.6, m.ry * 0.45, 0, 0, TAU); ctx.fill();
     }
     for (const p of pebbles) {
-      ctx.fillStyle = css(mix([150, 150, 135], [40, 44, 36], 1 - p.l), 0.8);
+      ctx.fillStyle = "rgba(10,16,6,0.35)";
+      ctx.beginPath(); ctx.ellipse(p.x + p.r * 0.3, p.y + p.r * 0.35, p.r, p.r * 0.55, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = css(mix([150, 150, 135], [40, 44, 36], 1 - p.l), 0.85);
       ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, p.r * 0.65, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(240,240,220,${0.3 * p.l})`;
+      ctx.beginPath(); ctx.ellipse(p.x - p.r * 0.3, p.y - p.r * 0.25, p.r * 0.35, p.r * 0.2, 0, 0, TAU); ctx.fill();
     }
+    for (const st of steps) drawStep(st);
+    // sunlight dappling the ground, shifting as the canopy moves
+    ctx.globalCompositeOperation = "screen";
+    for (const f of flecks) {
+      const a = 0.08 + 0.07 * Math.sin(time * f.s + f.p + (wind + gust) * 3);
+      if (a <= 0.01) continue;
+      const x = f.x + Math.sin(time * 0.7 + f.p) * (4 + Math.abs(wind + gust) * 10) * U;
+      ctx.save();
+      ctx.translate(x, f.y);
+      ctx.scale(1, 0.4);
+      const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, f.r);
+      fg.addColorStop(0, `rgba(255,246,200,${a})`);
+      fg.addColorStop(1, "rgba(255,246,200,0)");
+      ctx.fillStyle = fg;
+      ctx.fillRect(-f.r, -f.r, f.r * 2, f.r * 2);
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = "source-over";
 
     for (const s of stalks) if (s.layer === 2) drawStalk(s);
+    drawTufts();
 
     drawSpout(g);
     drawStone(g);
@@ -513,6 +625,8 @@
     drawBasin(g);
     drawTube(g, e);
     drawWater(g);
+    ctx.fillStyle = "rgba(225,242,250,0.75)";
+    for (const p of splashes) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.3 * U, 0, TAU); ctx.fill(); }
     for (const f of flashes) {
       const k = f.age / 0.4;
       ctx.strokeStyle = `rgba(255,255,240,${0.5 * (1 - k)})`;
@@ -538,6 +652,36 @@
     v.addColorStop(1, "rgba(5,10,3,0.55)");
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawStep(st) {
+    ctx.fillStyle = "rgba(10,16,6,0.4)";
+    ctx.beginPath(); ctx.ellipse(st.x + st.rx * 0.08, st.y + st.ry * 0.5, st.rx * 1.04, st.ry * 1.1, st.a, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#545a4c";
+    ctx.beginPath(); ctx.ellipse(st.x, st.y + st.ry * 0.25, st.rx, st.ry, st.a, 0, TAU); ctx.fill();
+    const g = ctx.createRadialGradient(st.x - st.rx * 0.35, st.y - st.ry * 0.4, 0, st.x, st.y, st.rx);
+    g.addColorStop(0, "#a9ab9c");
+    g.addColorStop(1, "#6a6e60");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(st.x, st.y, st.rx, st.ry, st.a, 0, TAU); ctx.fill();
+    ctx.fillStyle = "rgba(96,128,56,0.45)"; // moss in the hollows of its edge
+    ctx.beginPath(); ctx.ellipse(st.x + st.rx * 0.6, st.y + st.ry * 0.35, st.rx * 0.3, st.ry * 0.3, st.a, 0, TAU); ctx.fill();
+  }
+
+  function drawTufts() {
+    ctx.lineCap = "round";
+    for (const t of tufts) {
+      for (let k = 0; k < t.n; k++) {
+        const spread = (k / (t.n - 1) - 0.5) * 1.4, sway = (wind + gust) * 0.25 + Math.sin(time * 1.3 + t.p + k) * 0.06;
+        const a = -Math.PI / 2 + spread * 0.7 + sway, len = t.h * (1 - Math.abs(spread) * 0.35);
+        ctx.strokeStyle = k % 2 ? "rgba(70,100,36,0.95)" : "rgba(118,150,62,0.9)";
+        ctx.lineWidth = Math.max(0.8, 1.6 * U);
+        ctx.beginPath();
+        ctx.moveTo(t.x + spread * 3 * U, t.y);
+        ctx.quadraticCurveTo(t.x + spread * 5 * U + Math.cos(a) * len * 0.5, t.y + Math.sin(a) * len * 0.6, t.x + spread * 4 * U + Math.cos(a) * len, t.y + Math.sin(a) * len);
+        ctx.stroke();
+      }
+    }
   }
 
   function mistBand(y0, y1, a) {
@@ -584,6 +728,21 @@
     ctx.bezierCurveTo(g.kx + w * 0.7, top + 4 * U, g.kx + w * 1.05, top + 40 * U, g.kx + w * 0.95, groundY + 4 * U);
     ctx.closePath();
     ctx.fill();
+    ctx.save();
+    ctx.clip();
+    for (const sp of speckle) {
+      ctx.fillStyle = sp.l ? "rgba(220,222,210,0.25)" : "rgba(20,22,18,0.3)";
+      ctx.beginPath(); ctx.arc(g.kx - w + sp.u * w * 2, top + sp.v * (groundY - top), sp.r * U, 0, TAU); ctx.fill();
+    }
+    // dark and glossy where the tube keeps landing
+    const wet = ctx.createRadialGradient(g.kx, top + 4 * U, 0, g.kx, top + 4 * U, w * 0.6);
+    wet.addColorStop(0, "rgba(20,26,22,0.45)");
+    wet.addColorStop(1, "rgba(20,26,22,0)");
+    ctx.fillStyle = wet;
+    ctx.fillRect(g.kx - w, top - 4 * U, w * 2, w);
+    ctx.fillStyle = "rgba(230,240,240,0.35)";
+    ctx.beginPath(); ctx.ellipse(g.kx - w * 0.15, top + 5 * U, w * 0.18, 2 * U, 0, 0, TAU); ctx.fill();
+    ctx.restore();
     ctx.fillStyle = "rgba(90,120,50,0.55)"; // moss on its shoulder
     ctx.beginPath(); ctx.ellipse(g.kx - w * 0.45, top + 18 * U, w * 0.35, 6 * U, -0.5, 0, TAU); ctx.fill();
   }
@@ -591,6 +750,13 @@
   function drawPosts(g) {
     // a forked pair of posts holding the pivot pin
     for (const off of [-1, 1]) drawBamboo([g.px + off * 7 * U, groundY + 4 * U], [g.px + off * 7 * U, g.py - 10 * U], 5 * U, 0, [110, 98, 60]);
+    // a few turns of rope lashing the posts together below the pin
+    ctx.strokeStyle = "#4a3620";
+    ctx.lineWidth = 1.6 * U;
+    for (let k = 0; k < 3; k++) { const y = g.py + (14 + k * 4) * U; ctx.beginPath(); ctx.moveTo(g.px - 13 * U, y); ctx.lineTo(g.px + 13 * U, y + 2 * U); ctx.stroke(); }
+    ctx.strokeStyle = "rgba(220,190,140,0.3)";
+    ctx.lineWidth = 0.8 * U;
+    for (let k = 0; k < 3; k++) { const y = g.py + (13.4 + k * 4) * U; ctx.beginPath(); ctx.moveTo(g.px - 12 * U, y); ctx.lineTo(g.px + 12 * U, y + 2 * U); ctx.stroke(); }
   }
 
   function drawTube(g, e) {
@@ -608,8 +774,14 @@
     // the closed back end and the slanted open mouth
     ctx.fillStyle = css(mix(col, [40, 50, 20], 0.3));
     ctx.beginPath(); ctx.ellipse(e.bx, e.by, g.tr * 0.35, g.tr, a, 0, TAU); ctx.fill();
+    ctx.fillStyle = css(mix(col, [250, 245, 210], 0.45)); // the pale cut wall of the bamboo
+    ctx.beginPath(); ctx.ellipse(e.mx, e.my, g.tr * 1.02, g.tr * 0.64, a - 0.9, 0, TAU); ctx.fill();
     ctx.fillStyle = "#26300f";
-    ctx.beginPath(); ctx.ellipse(e.mx, e.my, g.tr * 0.9, g.tr * 0.55, a - 0.9, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(e.mx, e.my, g.tr * 0.86, g.tr * 0.5, a - 0.9, 0, TAU); ctx.fill();
+    // a long highlight down the tube
+    ctx.strokeStyle = "rgba(240,250,210,0.35)";
+    ctx.lineWidth = 1.6 * U;
+    ctx.beginPath(); ctx.moveTo(e.bx - nx * g.tr * 0.55, e.by - ny * g.tr * 0.55); ctx.lineTo(e.mx - nx * g.tr * 0.55, e.my - ny * g.tr * 0.55); ctx.stroke();
     if (tube.w > 0.55 && tube.state === "fill") { // water brimming in the mouth
       ctx.fillStyle = `rgba(200,230,240,${(tube.w - 0.55) * 1.4})`;
       ctx.beginPath(); ctx.ellipse(e.mx, e.my, g.tr * 0.65, g.tr * 0.35, a - 0.9, 0, TAU); ctx.fill();
@@ -636,6 +808,10 @@
     ctx.beginPath(); ctx.ellipse(bx - brx * 0.6, rimY + 34 * U, brx * 0.3, 8 * U, 0.3, 0, TAU); ctx.fill();
     ctx.fillStyle = "#a3a596";
     ctx.beginPath(); ctx.ellipse(bx, rimY, brx, bry, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,240,0.25)"; // the lit far edge of the rim
+    ctx.beginPath(); ctx.ellipse(bx, rimY - bry * 0.08, brx * 0.98, bry * 0.9, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.ellipse(bx, rimY, brx * 0.86, bry * 0.74, 0, Math.PI * 1.95, Math.PI * 1.05, true); ctx.fill();
+    ctx.fillStyle = "#4a4e44"; // the inner wall in shadow
+    ctx.beginPath(); ctx.ellipse(bx, rimY + 1 * U, brx * 0.86, bry * 0.76, 0, 0, TAU); ctx.fill();
     // the water, with the bright grove reflected in it
     const wg = ctx.createLinearGradient(0, rimY - bry, 0, rimY + bry);
     wg.addColorStop(0, "#c9d8b8");
@@ -645,6 +821,12 @@
     ctx.beginPath(); ctx.ellipse(bx, rimY + 2 * U, brx * 0.84, bry * 0.72, 0, 0, TAU); ctx.fill();
     ctx.save();
     ctx.beginPath(); ctx.ellipse(bx, rimY + 2 * U, brx * 0.84, bry * 0.72, 0, 0, TAU); ctx.clip();
+    const sky = ctx.createLinearGradient(bx - brx, 0, bx + brx, 0);
+    sky.addColorStop(0.3, "rgba(255,255,240,0)");
+    sky.addColorStop(0.45, "rgba(255,255,240,0.22)");
+    sky.addColorStop(0.6, "rgba(255,255,240,0)");
+    ctx.fillStyle = sky;
+    ctx.fillRect(bx - brx, rimY - bry, brx * 2, bry * 2);
     for (const r of ripples) {
       const k = r.age / 1.8, R = (4 + k * 70) * U;
       ctx.strokeStyle = `rgba(240,250,240,${0.45 * r.amp * (1 - k) * (1 - k)})`;
@@ -659,12 +841,14 @@
     ctx.lineCap = "round";
     ctx.fillStyle = "rgba(220,240,250,0.75)";
     for (const d of drops) { ctx.beginPath(); ctx.ellipse(d.x, d.y, 1.4 * U, 3.2 * U, 0, 0, TAU); ctx.fill(); }
-    ctx.strokeStyle = "rgba(210,235,245,0.35)";
-    ctx.lineWidth = 2 * U;
-    ctx.beginPath(); ctx.moveTo(g.sx, g.sy + 3 * U);
-    const e = tubeEnds(g), end = tube.state === "fill" ? e.my - g.tr : g.rimY;
-    ctx.quadraticCurveTo(g.sx + 1 * U, (g.sy + end) / 2, g.sx + 2 * U, end);
-    ctx.stroke();
+    const e = tubeEnds(g), end = tube.state === "fill" ? e.my - g.tr : g.rimY, flow = (opts.flow + 1) / 3;
+    for (const [wd, a] of [[3.2, 0.22], [1.2, 0.55]]) {
+      ctx.strokeStyle = `rgba(215,238,248,${a})`;
+      ctx.lineWidth = wd * U * (0.7 + flow * 0.4);
+      ctx.beginPath(); ctx.moveTo(g.sx, g.sy + 3 * U);
+      ctx.quadraticCurveTo(g.sx + 1 * U, (g.sy + end) / 2, g.sx + 2 * U + Math.sin(time * 9) * 0.4 * U, end);
+      ctx.stroke();
+    }
     ctx.fillStyle = "rgba(225,242,250,0.8)";
     for (const d of pours) { ctx.beginPath(); ctx.arc(d.x, d.y, 2.2 * U, 0, TAU); ctx.fill(); }
   }

@@ -38,7 +38,7 @@
   try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (_) { /* storage unavailable */ }
   settings.theme = clamp(settings.theme | 0, 0, THEMES.length - 1);
   settings.mode = clamp(settings.mode | 0, 0, MODES.length - 1);
-  settings.size = clamp(+settings.size || 1, 0.5, 2);
+  settings.size = 1; // orbs stay one size
   settings.auto = !!settings.auto;
   settings.music = settings.music !== false;
   settings.track = ["lofi", "dream", "space", "rain", "musicbox", "waves", "jazz"].includes(settings.track) ? settings.track : "lofi";
@@ -249,23 +249,6 @@
       o.start(t);
       o.stop(t + dk + 0.02);
     }
-  }
-
-  // rubbery pitch glide for resizing
-  function glide(f0, f1, x, vol = 0.04, dur = 0.12) {
-    if (!audioOk() || voiceBudget > 14) return;
-    voiceBudget += 0.5;
-    const t = ac.currentTime, out = output((x / W) * 2 - 1);
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(f0, t);
-    o.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.06);
-    o.connect(g).connect(out);
-    o.start(t);
-    o.stop(t + dur + 0.08);
   }
 
   // distant water drip for ambience
@@ -1116,7 +1099,7 @@
   let nextCi = 0;
 
   const maxR = () => Math.min(W, H, D) * 0.28;
-  // r is the orb's base size; the size slider and scroll-resizing scale it
+  // r is the orb's base size
   function makeOrb(x, y, z, base, ci = nextCi++, v = [rand(-40, 40), rand(-40, 40), rand(-30, 30)]) {
     const list = theme().orbs;
     const r = Math.min(maxR(), base * settings.size);
@@ -1659,38 +1642,6 @@
     clearTimeout(captionTimer);
     captionTimer = setTimeout(() => el.classList.remove("show"), 3200);
   }
-
-  // ---------- Size ----------
-  let lastTick = 0;
-  function setSize(v, x = W / 2) {
-    const prev = settings.size;
-    settings.size = clamp(v, 0.5, 2);
-    $("size").value = settings.size;
-    saveSettings();
-    if (time - lastTick > 0.06 && Math.abs(prev - settings.size) > 0.001) {
-      const f = 520 / settings.size;
-      glide(f * (prev / settings.size), f, x, 0.035, 0.08);
-      lastTick = time;
-    }
-  }
-
-  canvas.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    ensureAudio();
-    lastInteract = time;
-    const k = Math.exp(-e.deltaY * 0.0015);
-    const o = orbAt(e.clientX, e.clientY);
-    if (o) {
-      const before = o.own;
-      o.own = clamp(o.own * k, 0.35, 3);
-      if (time - lastTick > 0.05 && before !== o.own) {
-        const f = noteFreq(o.note) * 2;
-        glide(f, f * (before / o.own), o.P.X, 0.04, 0.1);
-        lastTick = time;
-      }
-    } else setSize(settings.size * k, e.clientX);
-    noteInteraction();
-  }, { passive: false });
 
   // ---------- Physics ----------
   function hit(o, impact, nx, ny, wall) {
@@ -2281,7 +2232,6 @@
     $("auto").setAttribute("aria-pressed", settings.auto);
     $("auto-speed").value = settings.autoSpeed;
     $("auto-speed-wrap").classList.toggle("off", !settings.auto);
-    $("size").value = settings.size;
     if (here()) document.querySelector('meta[name="theme-color"]').setAttribute("content", theme().bg[1]);
     window.dispatchEvent(new Event("zen-settings"));
   }
@@ -2316,7 +2266,6 @@
     autoTimer = Math.min(autoTimer, autoInterval());
     saveSettings();
   });
-  $("size").addEventListener("input", (e) => { ensureAudio(); lastInteract = time; setSize(+e.target.value); });
   $("clear").addEventListener("click", () => { ensureAudio(); popAll(); });
   window.addEventListener("keydown", (e) => {
     if (e.code !== "Space" || e.target.tagName === "BUTTON" || !here()) return;
@@ -2376,7 +2325,7 @@
 
   // dev hook: open with ?debug to inspect from the console
   if (new URLSearchParams(location.search).has("debug")) {
-    window.__drift = { music, get ac() { return ac; }, orbs, update, render, popOrb, makeOrb, popAll, settings, ptr, proj, form, setSize, homeWorld, shapePoints, shape(name) { shapeBag = [name]; form.phase = "rest"; form.t = 99; }, set lastInteract(v) { lastInteract = v; }, get D() { return D; }, get well() { return well; } };
+    window.__drift = { music, get ac() { return ac; }, orbs, update, render, popOrb, makeOrb, popAll, settings, ptr, proj, form, homeWorld, shapePoints, shape(name) { shapeBag = [name]; form.phase = "rest"; form.t = 99; }, set lastInteract(v) { lastInteract = v; }, get D() { return D; }, get well() { return well; } };
   }
 
   resize();

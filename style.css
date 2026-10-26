@@ -12,7 +12,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#c, #pond, #sand, #lanterns, #woodfish, #bamboo, #pane {
+#c, #pond, #sand, #lanterns, #woodfish, #bamboo, #pane, #hearth {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -107,16 +107,9 @@ html, body {
   gap: 6px;
   padding: 0 10px;
 }
-.small-dot, .big-dot {
-  display: inline-block;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, #9bb4ff 45%, #3a4a8a);
-}
-.small-dot { width: 7px; height: 7px; }
 .speed-ico { font-size: 1rem; line-height: 1; opacity: 0.8; }
 #auto-speed-wrap { margin-left: -6px; transition: opacity 0.2s ease; }
 #auto-speed-wrap.off { opacity: 0.4; }
-.big-dot { width: 14px; height: 14px; }
 .bar input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -247,6 +240,79 @@ html, body {
 #lanterns { cursor: crosshair; }
 #lanterns-title h1 { text-shadow: 0 0 30px rgba(255, 170, 90, 0.55); }
 
+/* a quote read off a lantern, and the box for writing one; both sit just above the bar */
+#lantern-note, #lanterns-write-panel {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 66px);
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  border-radius: 18px;
+  background: rgba(24, 20, 44, 0.55);
+  border: 1px solid rgba(255, 200, 140, 0.18);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 160, 80, 0.08);
+  z-index: 2;
+}
+#lantern-note {
+  padding: 16px 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 10px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+#lantern-note.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+#lantern-note-text {
+  margin: 0;
+  font-family: ui-serif, "Iowan Old Style", Georgia, serif;
+  font-size: 1.08rem;
+  line-height: 1.45;
+  color: #fff3e2;
+  text-shadow: 0 0 18px rgba(255, 170, 90, 0.35);
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#lantern-note-meta { display: block; margin-top: 8px; font-size: 0.75rem; letter-spacing: 0.04em; opacity: 0.5; }
+
+#lanterns-write-panel { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+#lanterns-write-panel label { font-size: 0.85rem; opacity: 0.75; padding: 0 2px; }
+#lanterns-quote {
+  font: inherit;
+  font-family: ui-serif, "Iowan Old Style", Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #fff3e2;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  resize: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#lanterns-quote:focus { outline: 2px solid rgba(255, 190, 120, 0.55); outline-offset: 0; }
+#lanterns-quote::placeholder { color: rgba(255, 240, 220, 0.35); }
+.lw-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.75rem; opacity: 0.6; padding: 0 2px; }
+.lw-actions { opacity: 1; justify-content: flex-end; }
+.lw-actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.lw-actions button:hover { background: rgba(255, 255, 255, 0.1); }
+#lanterns-write-send { background: rgba(255, 170, 90, 0.25); }
+#lanterns-write-send:hover { background: rgba(255, 170, 90, 0.38); }
+.lw-actions button:focus-visible { outline: 2px solid rgba(255, 190, 120, 0.7); outline-offset: 1px; }
+
 /* ---------- Sand: a light place, so dark ink ---------- */
 #sand { cursor: crosshair; }
 #sand.grab { cursor: grab; }
@@ -372,3 +438,7 @@ body[data-place="sand"] #places button[aria-pressed="true"] { background: rgba(7
 /* ---------- Window ---------- */
 #pane { cursor: pointer; }
 #pane-title h1 { text-shadow: 0 0 30px rgba(170, 190, 255, 0.5); }
+
+/* ---------- Hearth ---------- */
+#hearth { cursor: pointer; }
+#hearth-title h1 { text-shadow: 0 0 30px rgba(255, 140, 60, 0.6); }

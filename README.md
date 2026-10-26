@@ -4,13 +4,13 @@ A calm, ASMR-style toy. Glossy 3D orbs float around a softly lit room, bounce an
 
 ## Run
 
-There is no build step. Serve the folder over HTTP:
+There is no build step. Start the server:
 
 ```bash
-python3 -m http.server 5517
+python3 server.py 5517
 ```
 
-Then open http://localhost:5517. Headphones recommended.
+Then open http://localhost:5517. Headphones recommended. `server.py` serves the folder and also keeps the quotes people write on lanterns (see [Lanterns](#lanterns)) in `quotes.json`. It listens on every network interface, so others on your Wi-Fi can open `http://<your computer's address>:5517` and read the same quotes. Plain `python3 -m http.server` works too, but then quotes stay on each device.
 
 ## Places
 
@@ -23,6 +23,7 @@ The switcher in the top-left corner moves between calm places. Each one remember
 - **Muyu**: a wooden fish in a candlelit temple (see [Wooden fish](#wooden-fish)).
 - **Bamboo**: a misty bamboo grove with a shishi-odoshi (see [Bamboo](#bamboo)).
 - **Window**: rain on a windowpane at night (see [Window](#window)).
+- **Hearth**: a crackling fireplace on a quiet night (see [Hearth](#hearth)).
 
 ## Play
 
@@ -33,15 +34,13 @@ The switcher in the top-left corner moves between calm places. Each one remember
 | Drag an orb           | Grab it and fling it                                   |
 | Hold on empty space   | A gravity well pulls orbs into a swirl                 |
 | Swipe across space    | Stir the orbs like water                               |
-| Scroll over an orb    | Grow or shrink just that orb                           |
-| Scroll on empty space | Resize every orb (same as the size slider)             |
 | <kbd>Space</kbd>      | Drop in a random orb                                   |
 
-The bar at the bottom switches **motion** (Float, Fall, Swirl, Shapes), **colors** (Aurora, Sunset, Ocean, Candy, Pearl, Prism, Neon, Forest, Galaxy), sets **orb size**, toggles background music and sound, and **Pop all** pops every orb in a left-to-right cascade.
+The bar at the bottom switches **motion** (Float, Fall, Swirl, Shapes), **colors** (Aurora, Sunset, Ocean, Candy, Pearl, Prism, Neon, Forest, Galaxy), toggles background music and sound, and **Pop all** pops every orb in a left-to-right cascade.
 
 **Shapes** mode has the orbs glide into slowly turning formations (28 in all: ring, sphere, double helix, heart, star, cube, galaxy, wave, donut, pyramid, diamond, infinity sign, spiral, crescent moon, flower, smiley face, tornado, atom, Saturn, crown, butterfly, lightning bolt, music note, pine tree, house, cat face, fish and sun), shuffled so each appears once before any repeats, hold them, then drift apart and form the next one. While a shape holds, its orbs ease to one shared size so the outline reads cleanly, and corners like star points and crown tips always get an orb. Float mode does the same on its own after 25 seconds without input.
 
-**Auto:** the ✺ button lets new orbs drift in on their own, and the slider beside it sets how often. Auto orbs are temporary: each lives 18–40 seconds, shivers briefly, then pops softly. New ones only arrive while there's room (about a fifth of the screen covered, 60 orbs at most). If the room gets crowded anyway, for example after raising the size slider, the oldest auto orbs pop one at a time until it clears. Orbs you make yourself are never removed, and turning Auto off lets the auto orbs fade out on their own.
+**Auto:** the ✺ button lets new orbs drift in on their own, and the slider beside it sets how often. Auto orbs are temporary: each lives 18–40 seconds, shivers briefly, then pops softly. New ones only arrive while there's room (about a fifth of the screen covered, 60 orbs at most). If the room gets crowded anyway, the oldest auto orbs pop one at a time until it clears. Orbs you make yourself are never removed, and turning Auto off lets the auto orbs fade out on their own.
 
 **Color:** every orb has a faint rainbow film that drifts across it like a soap bubble (strongest in Pearl and Prism), coloured light pools wander slowly around the room, and popped orbs burst into sparkles in all of the theme's colours.
 
@@ -116,9 +115,12 @@ A lake at night under layered mountains: stars, a crescent moon laid across the 
 | Hold on the sky       | A lantern fills in your hand, growing the longer you hold; drag it, let go to release |
 | Tap the lake          | Float a little box lantern; the current carries it slowly out to the far shore |
 | Drag                  | Send a breeze through the lanterns and reeds, or stir the water               |
+| Tap a lantern with a paper strip | Read the quote it carries; the lantern hangs still while you read     |
 | <kbd>Space</kbd>      | Release lanterns all along the far shore (same as **Release**)                |
 
-The bar has **Release**, lantern **color** (Amber, Rose, Moon, Jade or Mixed), music and sound. Now and then a shooting star crosses, someone far off lets a lantern go, and a temple bell sounds across the water. You hear each wick catch, a chime as a lantern lifts off, the water lapping and the breeze you make. The color is remembered.
+**Quotes:** **Write** (✎) opens a box for a quote, wish or kind word (up to 160 characters). Your draft saves as you type, and **Send it up** (or <kbd>Enter</kbd>) sends it up on a lantern with a paper strip hanging below it. Quotes are stored by `server.py`, so everyone who opens the game from the same server reads them. Lanterns drifting up now and then, and some of the ones you **Release**, carry quotes other people wrote, and a quote someone writes while you're watching rises from the far shore within about 30 seconds. If the server can't be reached, your quote is kept on your device and sent the next time it can be.
+
+The bar has **Write**, **Release**, lantern **color** (Amber, Rose, Moon, Jade or Mixed), music and sound. Now and then a shooting star crosses, someone far off lets a lantern go, and a temple bell sounds across the water. You hear each wick catch, a chime as a lantern lifts off, the water lapping and the breeze you make. The color is remembered.
 
 ## Wooden fish
 
@@ -159,6 +161,21 @@ A windowsill on a rainy evening, a mug of tea steaming on the sill, blurred ligh
 
 The bar has the **rain** (Drizzle, Rain, or Storm with distant lightning and thunder), the **view** (City lights, Forest, Dusk), **fog** on or off, music and sound. You hear the rain outside, drops ticking on the glass, and a soft swish when you wipe. The settings are remembered.
 
+## Hearth
+
+A stone fireplace on a quiet night, a clock, a candle and a few books on the mantel, a basket of logs, and a cat asleep on the rug. Logs catch slowly, char, and glow along their cracks; flames lick up from them over a bed of embers, sparks rise up the chimney, and the firelight flickers over the stones and the room. Each log burns for a few minutes, then gives way into the embers in a shower of sparks.
+
+| Do this                    | What happens                                                    |
+| -------------------------- | --------------------------------------------------------------- |
+| Tap the fire               | Poke it: a burst of sparks, a flare, and the logs settle        |
+| Hold                       | Fan the flames: they grow and roar while you hold               |
+| Drag                       | A draught sways the flames and sparks                           |
+| Tap the log basket         | Lay another log on the fire (it hisses as it dries, then catches) |
+| Tap the cat                | It purrs for a while, and flicks its ears                       |
+| <kbd>Space</kbd>           | Add a log                                                       |
+
+The bar has **Add log**, **Poke**, **Keep it going** (adds a log on its own when the fire runs low; turn it off and the fire burns down to embers and slowly goes out), music and sound. You hear the fire's low roar, crackles and pops, a fresh log's hiss, the thunk of logs landing, the poker in the coals, a whoosh when you fan it, and the cat's purr.
+
 ## Files
 
 - `index.html`: page and controls
@@ -170,7 +187,9 @@ The bar has the **rain** (Drizzle, Rain, or Storm with distant lightning and thu
 - `woodfish.js`: the wooden fish
 - `bamboo.js`: the bamboo grove
 - `window.js`: the rainy window
+- `hearth.js`: the fireplace
 - `places.js`: the place switcher
 - `ambience.js`: the ambient soundscapes
+- `server.py`: serves the game and stores lantern quotes in `quotes.json` (not checked in)
 
-Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns`, `window.__woodfish`, `window.__bamboo` and `window.__window` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns`, `window.__woodfish`, `window.__bamboo`, `window.__window` and `window.__hearth` in the console for testing.

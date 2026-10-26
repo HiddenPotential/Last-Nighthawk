@@ -33,6 +33,8 @@
   let cx = 0, cy = 0, R = 100, tableY = 0;
   let bowl = { x: 0, y: 0, r: 30 }, burner = { x: 0, y: 0 }, candles = [];
   let grain = [];
+  let pillars = [], moonWin = { x: 0, y: 0, r: 100 };
+  const dust = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), p: rand(0, TAU), s: rand(0.02, 0.06), r: rand(0.6, 1.6) }));
 
   function layout() {
     R = clamp(Math.min(W * 0.2, H * 0.19), 64, 180);
@@ -43,7 +45,11 @@
     candles = [-1, 1].map((side) => ({ x: cx + side * spread, y: tableY + R * 0.06, h: R * 0.58, w: R * 0.17, p: rand(0, TAU) }));
     bowl = { x: cx - Math.max(R * 1.55, spread * 0.55), y: tableY + R * 0.04, r: R * 0.36 };
     burner = { x: cx + Math.max(R * 1.55, spread * 0.55), y: tableY + R * 0.05 };
-    grain = Array.from({ length: 9 }, (_, i) => ({ y: tableY + R * (0.06 + i * 0.045), a: rand(0, TAU), k: rand(0.004, 0.012), amp: rand(1, 4) }));
+    grain = Array.from({ length: 9 }, (_, i) => ({ y: tableY + R * (0.2 + i * 0.07), a: rand(0, TAU), k: rand(0.004, 0.012), amp: rand(1, 4) }));
+    // a round moon window behind the fish, and two lacquered pillars framing the altar
+    moonWin = { x: cx, y: cy - R * 0.32, r: R * 1.42 };
+    const px = Math.min(W / 2 - R * 0.12, R * 4.3);
+    pillars = [-1, 1].map((side) => ({ x: cx + side * px, w: R * 0.4, side }));
   }
 
   // ---------- State ----------
@@ -307,44 +313,31 @@
     bg.addColorStop(1, "#080403");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
-    // wall panels
-    ctx.strokeStyle = "rgba(255,200,150,0.035)";
+    // plastered wall panels between timber posts
+    ctx.strokeStyle = "rgba(255,200,150,0.04)";
     ctx.lineWidth = 1;
-    const step = Math.max(60, R * 0.9);
+    const step = Math.max(70, R * 1.1);
     for (let x = (cx % step) - step; x < W + step; x += step) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, tableY); ctx.stroke();
     }
-    // a hanging scroll behind the altar
+    drawMoonWindow();
     drawScroll();
+    drawBeam();
+    for (const p of pillars) drawPillar(p, flicker);
 
-    // altar table
-    const tg = ctx.createLinearGradient(0, tableY, 0, H);
-    tg.addColorStop(0, "#5a2e17");
-    tg.addColorStop(0.08, "#3d1e0f");
-    tg.addColorStop(1, "#140905");
-    ctx.fillStyle = tg;
-    ctx.fillRect(0, tableY, W, H - tableY);
-    ctx.strokeStyle = "rgba(255,190,130,0.22)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(0, tableY + 0.5); ctx.lineTo(W, tableY + 0.5); ctx.stroke();
-    ctx.strokeStyle = "rgba(0,0,0,0.25)";
-    ctx.lineWidth = 1;
-    for (const g of grain) {
-      ctx.beginPath();
-      for (let x = 0; x <= W; x += 24) { const y = g.y + Math.sin(x * g.k + g.a) * g.amp; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-      ctx.stroke();
-    }
+    drawTable(flicker);
 
     // candlelight warms everything near it
     ctx.globalCompositeOperation = "lighter";
     for (const c of candles) {
       const f = flicker + 0.06 * Math.sin(time * 9 + c.p);
       const fy = c.y - c.h - R * 0.1;
-      const lg = ctx.createRadialGradient(c.x, fy, 0, c.x, fy, R * 2.4);
-      lg.addColorStop(0, `rgba(255,160,70,${0.2 * f})`);
+      const lg = ctx.createRadialGradient(c.x, fy, 0, c.x, fy, R * 2.6);
+      lg.addColorStop(0, `rgba(255,160,70,${0.22 * f})`);
+      lg.addColorStop(0.4, `rgba(255,140,60,${0.07 * f})`);
       lg.addColorStop(1, "rgba(255,160,70,0)");
       ctx.fillStyle = lg;
-      ctx.fillRect(c.x - R * 2.4, fy - R * 2.4, R * 4.8, R * 4.8);
+      ctx.fillRect(c.x - R * 2.6, fy - R * 2.6, R * 5.2, R * 5.2);
     }
     if (glow > 0.01) {
       const gg = ctx.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 2);
@@ -360,10 +353,11 @@
     drawBurner();
     drawSmoke();
     drawCushion();
-    drawFish();
+    drawFish(flicker);
     drawRings();
     drawMallet();
     drawMotes();
+    drawDust(flicker);
     drawWords();
     drawCount();
 
@@ -375,10 +369,170 @@
     ctx.fillRect(0, 0, W, H);
   }
 
+  // a round window of paper and lattice, lit faintly blue by the moon outside
+  function drawMoonWindow() {
+    const { x, y, r } = moonWin;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.clip();
+    const pg = ctx.createRadialGradient(x - r * 0.25, y - r * 0.35, r * 0.1, x, y, r);
+    pg.addColorStop(0, "#5b6680");
+    pg.addColorStop(0.6, "#2f3446");
+    pg.addColorStop(1, "#1a1a24");
+    ctx.fillStyle = pg;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    // a bamboo shadow cast on the paper from outside
+    ctx.strokeStyle = "rgba(10,12,22,0.35)";
+    ctx.lineWidth = r * 0.05;
+    ctx.beginPath(); ctx.moveTo(x + r * 0.55, y + r); ctx.quadraticCurveTo(x + r * 0.5, y, x + r * 0.62, y - r); ctx.stroke();
+    ctx.fillStyle = "rgba(10,12,22,0.28)";
+    for (let k = 0; k < 7; k++) {
+      const ly = y - r * 0.7 + k * r * 0.18, sway = Math.sin(time * 0.4 + k) * 0.06, dir = k % 2 ? 1 : -1;
+      ctx.save();
+      ctx.translate(x + r * 0.54, ly);
+      ctx.rotate(dir * (0.9 + sway) + Math.PI / 2);
+      ctx.beginPath(); ctx.ellipse(r * 0.13, 0, r * 0.14, r * 0.025, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // lattice
+    ctx.strokeStyle = "rgba(24,12,7,0.9)";
+    ctx.lineWidth = Math.max(1.2, r * 0.022);
+    const g = r * 0.25;
+    for (let k = -4; k <= 4; k++) {
+      ctx.beginPath(); ctx.moveTo(x + k * g, y - r); ctx.lineTo(x + k * g, y + r); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - r, y + k * g); ctx.lineTo(x + r, y + k * g); ctx.stroke();
+    }
+    // the hall's warmth spills onto the lower half of the paper
+    const wg = ctx.createLinearGradient(0, y - r, 0, y + r);
+    wg.addColorStop(0, "rgba(255,150,80,0)");
+    wg.addColorStop(1, "rgba(255,150,80,0.16)");
+    ctx.fillStyle = wg;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.restore();
+    // the round frame, a little deeper on the side away from the candles
+    const fg = ctx.createLinearGradient(x, y - r, x, y + r);
+    fg.addColorStop(0, "#1c0d07");
+    fg.addColorStop(1, "#4a2412");
+    ctx.strokeStyle = fg;
+    ctx.lineWidth = r * 0.11;
+    ctx.beginPath(); ctx.arc(x, y, r + r * 0.05, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,190,120,0.18)";
+    ctx.lineWidth = Math.max(1, r * 0.012);
+    ctx.beginPath(); ctx.arc(x, y, r + r * 0.105, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  }
+
+  function drawBeam() {
+    const y = Math.max(0, moonWin.y - moonWin.r - R * 0.75), h = R * 0.26;
+    if (y < 4) return;
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, "#2a130a");
+    g.addColorStop(0.5, "#3e1d0e");
+    g.addColorStop(1, "#160904");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, W, h);
+    ctx.fillStyle = "rgba(240,180,90,0.28)";
+    ctx.fillRect(0, y + h - 2, W, 1.5);
+  }
+
+  function drawPillar(p, flicker) {
+    const x0 = p.x - p.w / 2;
+    if (x0 > W || x0 + p.w < 0) return;
+    const g = ctx.createLinearGradient(x0, 0, x0 + p.w, 0);
+    // vermilion lacquer, lit on the side facing the candles
+    const lit = p.side < 0 ? 1 : 0;
+    g.addColorStop(0, lit ? "#3c0d07" : "#5e170b");
+    g.addColorStop(0.5, "#6e1c0d");
+    g.addColorStop(lit ? 0.8 : 0.2, `rgba(${150 + 30 * flicker | 0},52,24,1)`);
+    g.addColorStop(1, lit ? "#5e170b" : "#3c0d07");
+    ctx.fillStyle = g;
+    ctx.fillRect(x0, 0, p.w, tableY);
+    // gilded bands
+    for (const yy of [tableY - R * 0.5, R * 0.6]) {
+      ctx.fillStyle = "rgba(200,150,70,0.55)";
+      ctx.fillRect(x0, yy, p.w, R * 0.05);
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(x0, yy + R * 0.05, p.w, 2);
+    }
+  }
+
+  // the altar: a polished top catching the light, a carved front panel below
+  function drawTable(flicker) {
+    const topH = R * 0.16, front = tableY + topH;
+    const tg = ctx.createLinearGradient(0, tableY, 0, front);
+    tg.addColorStop(0, "#6a3518");
+    tg.addColorStop(1, "#3a1c0d");
+    ctx.fillStyle = tg;
+    ctx.fillRect(0, tableY, W, topH);
+    // candles, fish and bowl reflected in the lacquered top
+    ctx.globalCompositeOperation = "lighter";
+    for (const c of candles) {
+      const f = flicker + 0.06 * Math.sin(time * 9 + c.p);
+      ctx.save();
+      ctx.translate(c.x, tableY + topH * 0.55);
+      ctx.scale(1, 0.18);
+      const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.9);
+      rg.addColorStop(0, `rgba(255,190,110,${0.35 * f})`);
+      rg.addColorStop(1, "rgba(255,190,110,0)");
+      ctx.fillStyle = rg;
+      ctx.fillRect(-R * 0.9, -R * 0.9, R * 1.8, R * 1.8);
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = "rgba(255,200,140,0.32)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, tableY + 0.5); ctx.lineTo(W, tableY + 0.5); ctx.stroke();
+    // the front face
+    const fg = ctx.createLinearGradient(0, front, 0, H);
+    fg.addColorStop(0, "#3d1d0e");
+    fg.addColorStop(1, "#120804");
+    ctx.fillStyle = fg;
+    ctx.fillRect(0, front, W, H - front);
+    ctx.fillStyle = "rgba(240,180,90,0.45)";
+    ctx.fillRect(0, front, W, Math.max(1, R * 0.012));
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, front + R * 0.012, W, R * 0.03);
+    ctx.strokeStyle = "rgba(0,0,0,0.22)";
+    ctx.lineWidth = 1;
+    for (const g of grain) {
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 24) { const y = g.y + Math.sin(x * g.k + g.a) * g.amp; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+    // a carved panel framing the count
+    const pw = Math.min(W - 40, R * 3.4), ph = Math.min(H - front - 30, R * 0.95), px = cx - pw / 2, py = front + R * 0.12;
+    if (ph > R * 0.4) {
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 1, py + 1, pw, ph);
+      ctx.strokeStyle = "rgba(240,180,100,0.2)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px, py, pw, ph);
+      ctx.strokeRect(px + 6, py + 6, pw - 12, ph - 12);
+    }
+  }
+
+  // dust turning slowly in the candlelight
+  function drawDust(flicker) {
+    ctx.globalCompositeOperation = "lighter";
+    for (const d of dust) {
+      const x = ((d.x + Math.sin(time * d.s + d.p) * 0.03 + time * d.s * 0.08) % 1) * W;
+      const y = ((d.y - time * d.s * 0.05 + 1) % 1) * tableY;
+      let lit = 0;
+      for (const c of candles) lit = Math.max(lit, 1 - Math.hypot(x - c.x, y - (c.y - c.h)) / (R * 2.4));
+      lit = Math.max(lit, 0.6 * (1 - Math.hypot(x - cx, y - cy) / (R * 2.2)));
+      if (lit <= 0) continue;
+      ctx.fillStyle = `rgba(255,214,160,${0.55 * lit * flicker * (0.5 + 0.5 * Math.sin(time * 1.3 + d.p))})`;
+      ctx.beginPath(); ctx.arc(x, y, d.r * (R / 100), 0, TAU); ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   function drawScroll() {
     // it hangs on the wall above the singing bowl
-    const w = Math.min(R * 0.9, Math.abs(cx - bowl.x) * 0.9), bottom = tableY - R * 0.95, h = Math.min(R * 1.9, bottom - 70);
-    const x = bowl.x - w / 2, y = bottom - h, mid = bowl.x;
+    let w = Math.min(R * 0.9, Math.abs(cx - bowl.x) * 0.9);
+    const bottom = tableY - R * 0.95, h = Math.min(R * 1.9, bottom - 70);
+    let mid = Math.min(bowl.x, moonWin.x - moonWin.r * 1.12 - w / 2);
+    if (mid - w / 2 < 8) { w = Math.min(w, (mid + w / 2 - 8)); mid = 8 + w / 2; }
+    const x = mid - w / 2, y = bottom - h;
     if (h < R * 0.7 || w < 30) return;
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.fillRect(x + 6, y + 8, w, h);
@@ -407,26 +561,55 @@
   }
 
   function drawCandle(c, flicker) {
-    const top = c.y - c.h;
+    const top = c.y - c.h, f = flicker + 0.08 * Math.sin(time * 11 + c.p);
     ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.beginPath(); ctx.ellipse(c.x + c.w * 0.4, c.y + 2, c.w * 1.2, c.w * 0.25, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(c.x + c.w * 0.4, c.y + 2, c.w * 1.5, c.w * 0.28, 0, 0, TAU); ctx.fill();
+    // brass dish
+    const dg = ctx.createLinearGradient(c.x - c.w, 0, c.x + c.w, 0);
+    dg.addColorStop(0, "#5a3c14");
+    dg.addColorStop(0.35, "#e2b35c");
+    dg.addColorStop(0.6, "#9a6a26");
+    dg.addColorStop(1, "#3c260b");
+    ctx.fillStyle = dg;
+    ctx.beginPath(); ctx.ellipse(c.x, c.y - c.w * 0.05, c.w * 1.05, c.w * 0.26, 0, 0, Math.PI); ctx.lineTo(c.x - c.w * 1.05, c.y - c.w * 0.12); ctx.ellipse(c.x, c.y - c.w * 0.12, c.w * 1.05, c.w * 0.26, 0, Math.PI, TAU); ctx.closePath(); ctx.fill();
+    // wax: soft, and glowing through near the flame
     const g = ctx.createLinearGradient(c.x - c.w / 2, 0, c.x + c.w / 2, 0);
-    g.addColorStop(0, "#c9a07a");
-    g.addColorStop(0.35, "#fbe7c8");
-    g.addColorStop(1, "#a07a58");
+    g.addColorStop(0, "#b48c66");
+    g.addColorStop(0.35, "#f6e2c2");
+    g.addColorStop(1, "#8e6a4a");
     ctx.fillStyle = g;
-    ctx.fillRect(c.x - c.w / 2, top, c.w, c.h);
-    ctx.fillStyle = "#e9cfa8";
+    ctx.fillRect(c.x - c.w / 2, top, c.w, c.h - c.w * 0.12);
+    const tg = ctx.createLinearGradient(0, top, 0, top + c.h * 0.4);
+    tg.addColorStop(0, `rgba(255,210,140,${0.55 * f})`);
+    tg.addColorStop(1, "rgba(255,210,140,0)");
+    ctx.fillStyle = tg;
+    ctx.fillRect(c.x - c.w / 2, top, c.w, c.h * 0.4);
+    // two drips down the front
+    ctx.fillStyle = "rgba(255,236,206,0.75)";
+    for (const [ox, len] of [[-0.22, 0.26], [0.18, 0.14]]) {
+      const dx = c.x + ox * c.w, dl = c.h * len;
+      ctx.beginPath(); ctx.moveTo(dx - c.w * 0.07, top); ctx.lineTo(dx - c.w * 0.06, top + dl); ctx.arc(dx, top + dl, c.w * 0.065, Math.PI, 0, true); ctx.lineTo(dx + c.w * 0.07, top); ctx.fill();
+    }
+    ctx.fillStyle = "#f1dab4";
     ctx.beginPath(); ctx.ellipse(c.x, top, c.w / 2, c.w * 0.15, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = "rgba(170,120,80,0.35)"; // the little well melted round the wick
+    ctx.beginPath(); ctx.ellipse(c.x, top + c.w * 0.02, c.w * 0.3, c.w * 0.08, 0, 0, TAU); ctx.fill();
     // wick and flame
     ctx.strokeStyle = "#2a1a10";
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(c.x, top); ctx.lineTo(c.x, top - c.w * 0.3); ctx.stroke();
-    const f = flicker + 0.08 * Math.sin(time * 11 + c.p), fh = c.w * 1.5 * f, sway = Math.sin(time * 3 + c.p) * c.w * 0.08;
+    const fh = c.w * 1.6 * f, sway = Math.sin(time * 3 + c.p) * c.w * 0.08;
     const fx = c.x, fy = top - c.w * 0.25;
+    ctx.globalCompositeOperation = "lighter";
+    const halo = ctx.createRadialGradient(fx, fy - fh * 0.4, 0, fx, fy - fh * 0.4, c.w * 2.4);
+    halo.addColorStop(0, `rgba(255,190,100,${0.35 * f})`);
+    halo.addColorStop(1, "rgba(255,190,100,0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(fx - c.w * 2.4, fy - fh * 0.4 - c.w * 2.4, c.w * 4.8, c.w * 4.8);
+    ctx.globalCompositeOperation = "source-over";
     const fg = ctx.createRadialGradient(fx, fy - fh * 0.3, 0, fx, fy - fh * 0.3, fh);
-    fg.addColorStop(0, "rgba(255,255,230,1)");
-    fg.addColorStop(0.35, "rgba(255,200,90,0.95)");
+    fg.addColorStop(0, "rgba(255,255,236,1)");
+    fg.addColorStop(0.35, "rgba(255,206,100,0.95)");
     fg.addColorStop(1, "rgba(255,120,30,0)");
     ctx.fillStyle = fg;
     ctx.beginPath();
@@ -435,6 +618,8 @@
     ctx.quadraticCurveTo(fx + c.w * 0.3, fy - fh * 0.5, fx + c.w * 0.22, fy);
     ctx.quadraticCurveTo(fx, fy + c.w * 0.18, fx - c.w * 0.22, fy);
     ctx.fill();
+    ctx.fillStyle = "rgba(90,130,255,0.5)"; // the blue at the root of the flame
+    ctx.beginPath(); ctx.ellipse(fx, fy - c.w * 0.02, c.w * 0.12, c.w * 0.07, 0, 0, TAU); ctx.fill();
   }
 
   function drawBowl() {
@@ -456,12 +641,23 @@
     ctx.bezierCurveTo(x + r * 0.55, y + r * 0.05, x + r, y - r * 0.05, x + r, y - r * 0.7);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = "rgba(255,230,170,0.35)";
+    ctx.lineWidth = Math.max(1, r * 0.07);
+    ctx.beginPath(); ctx.moveTo(x - r * 0.55, y - r * 0.6); ctx.quadraticCurveTo(x - r * 0.62, y - r * 0.25, x - r * 0.4, y - r * 0.05); ctx.stroke();
     // the open mouth
     ctx.fillStyle = "#2a1a0a";
     ctx.beginPath(); ctx.ellipse(x, y - r * 0.7, r, r * 0.22, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = `rgba(255,220,150,${0.55 + bowlGlow * 0.45})`;
     ctx.lineWidth = Math.max(1.2, r * 0.05);
     ctx.beginPath(); ctx.ellipse(x, y - r * 0.7, r, r * 0.22, 0, 0, TAU); ctx.stroke();
+    // the wooden striker resting against it
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#5a3418";
+    ctx.lineWidth = Math.max(2, r * 0.13);
+    ctx.beginPath(); ctx.moveTo(x + r * 0.55, y + r * 0.02); ctx.lineTo(x + r * 1.25, y - r * 0.95); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,200,140,0.3)";
+    ctx.lineWidth = Math.max(1, r * 0.04);
+    ctx.beginPath(); ctx.moveTo(x + r * 0.58, y - r * 0.02); ctx.lineTo(x + r * 1.22, y - r * 0.95); ctx.stroke();
     // while it sings, rings of light shimmer off the rim
     if (bowlGlow > 0.01) {
       ctx.globalCompositeOperation = "lighter";
@@ -494,6 +690,8 @@
     }
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath(); ctx.ellipse(x + r * 0.2, y + 2, r * 1.1, r * 0.22, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#2a2418";
+    for (const k of [-0.55, 0, 0.55]) { ctx.beginPath(); ctx.ellipse(x + k * r, y + r * 0.02, r * 0.1, r * 0.06, 0, 0, TAU); ctx.fill(); }
     const g = ctx.createLinearGradient(x - r, 0, x + r, 0);
     g.addColorStop(0, "#2e2a1e");
     g.addColorStop(0.35, "#7d6c46");
@@ -506,6 +704,9 @@
     ctx.quadraticCurveTo(x + r * 1.05, y, x + r, y - r * 0.55);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = "rgba(230,200,120,0.35)";
+    ctx.lineWidth = Math.max(1, r * 0.05);
+    ctx.beginPath(); ctx.moveTo(x - r * 0.92, y - r * 0.3); ctx.quadraticCurveTo(x, y - r * 0.18, x + r * 0.92, y - r * 0.3); ctx.stroke();
     ctx.fillStyle = "#4a3f2a";
     ctx.beginPath(); ctx.ellipse(x, y - r * 0.55, r, r * 0.2, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = "#9a8a6a";
@@ -528,31 +729,79 @@
   function drawCushion() {
     const y = cy + R * 0.8, rx = R * 1.18, ry = R * 0.32;
     ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.beginPath(); ctx.ellipse(cx + R * 0.1, tableY + 2, rx * 1.02, ry * 0.5, 0, 0, TAU); ctx.fill();
-    // a plump silk cushion: side then top
-    ctx.fillStyle = "#5e1212";
+    ctx.beginPath(); ctx.ellipse(cx + R * 0.1, tableY + 2, rx * 1.04, ry * 0.5, 0, 0, TAU); ctx.fill();
+    // a plump silk cushion: its side, then its top
+    const sg = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+    sg.addColorStop(0, "#3e0909");
+    sg.addColorStop(0.3, "#7a1818");
+    sg.addColorStop(1, "#320707");
+    ctx.fillStyle = sg;
     ctx.beginPath(); ctx.ellipse(cx, y + ry * 0.45, rx, ry, 0, 0, TAU); ctx.fill();
     const g = ctx.createRadialGradient(cx - rx * 0.3, y - ry * 0.4, 0, cx, y, rx);
-    g.addColorStop(0, "#c8383a");
-    g.addColorStop(0.6, "#8e1d1f");
+    g.addColorStop(0, "#cf4245");
+    g.addColorStop(0.55, "#921e21");
     g.addColorStop(1, "#5a1010");
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.ellipse(cx, y, rx, ry, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = "rgba(240,190,90,0.7)";
-    ctx.lineWidth = Math.max(1.2, R * 0.025);
-    ctx.beginPath(); ctx.ellipse(cx, y, rx * 0.9, ry * 0.8, 0, 0, TAU); ctx.stroke();
+    // folds gathered toward the tufted middle
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(cx, y, rx, ry, 0, 0, TAU); ctx.clip();
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * TAU + 0.15, ex = cx + Math.cos(a) * rx, ey = y + Math.sin(a) * ry;
+      ctx.strokeStyle = "rgba(40,0,0,0.28)";
+      ctx.lineWidth = R * 0.03;
+      ctx.beginPath(); ctx.moveTo(cx, y); ctx.quadraticCurveTo(cx + Math.cos(a + 0.25) * rx * 0.5, y + Math.sin(a + 0.25) * ry * 0.5, ex, ey); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,150,140,0.1)";
+      ctx.lineWidth = R * 0.02;
+      ctx.beginPath(); ctx.moveTo(cx, y - R * 0.01); ctx.quadraticCurveTo(cx + Math.cos(a + 0.3) * rx * 0.5, y + Math.sin(a + 0.3) * ry * 0.5 - R * 0.015, ex, ey - R * 0.015); ctx.stroke();
+    }
+    // silk sheen
+    ctx.strokeStyle = "rgba(255,200,190,0.18)";
+    ctx.lineWidth = R * 0.06;
+    ctx.beginPath(); ctx.ellipse(cx, y, rx * 0.8, ry * 0.68, 0, Math.PI * 0.62, Math.PI * 0.95); ctx.stroke();
+    // the fish sits in it: a soft shadow beneath
+    const fs = ctx.createRadialGradient(cx, y - ry * 0.25, R * 0.1, cx, y - ry * 0.25, R * 0.95);
+    fs.addColorStop(0, "rgba(30,0,0,0.6)");
+    fs.addColorStop(1, "rgba(30,0,0,0)");
+    ctx.fillStyle = fs;
+    ctx.save(); ctx.translate(cx, y - ry * 0.25); ctx.scale(1, 0.33); ctx.translate(-cx, -(y - ry * 0.25));
+    ctx.fillRect(cx - R, y - ry * 0.25 - R, R * 2, R * 2);
+    ctx.restore();
+    ctx.restore();
+    // twisted gold cord around the rim
+    ctx.lineWidth = Math.max(1.5, R * 0.03);
+    ctx.strokeStyle = "rgba(150,100,30,0.9)";
+    ctx.beginPath(); ctx.ellipse(cx, y, rx * 0.985, ry * 0.97, 0, 0, TAU); ctx.stroke();
+    ctx.setLineDash([R * 0.025, R * 0.025]);
+    ctx.strokeStyle = "rgba(255,214,130,0.9)";
+    ctx.beginPath(); ctx.ellipse(cx, y, rx * 0.985, ry * 0.97, 0, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
     // tassels at the corners
     for (const side of [-1, 1]) {
-      const tx = cx + side * rx * 0.98, ty = y + ry * 0.4;
+      const tx = cx + side * rx * 0.98, ty = y + ry * 0.4, sw = Math.sin(time * 0.9 + side) * R * 0.01;
       ctx.strokeStyle = "rgba(240,190,90,0.85)";
-      ctx.lineWidth = Math.max(1, R * 0.018);
-      for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + k * R * 0.012 + side * R * 0.02, ty + R * 0.16); ctx.stroke(); }
+      ctx.lineWidth = Math.max(1, R * 0.016);
+      for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(tx, ty + R * 0.03); ctx.lineTo(tx + k * R * 0.01 + side * R * 0.02 + sw, ty + R * 0.19); ctx.stroke(); }
       ctx.fillStyle = "#e8b85a";
-      ctx.beginPath(); ctx.arc(tx, ty, R * 0.03, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(tx, ty + R * 0.02, R * 0.032, R * 0.045, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = "rgba(255,240,200,0.6)";
+      ctx.beginPath(); ctx.arc(tx - R * 0.01, ty + R * 0.005, R * 0.01, 0, TAU); ctx.fill();
     }
   }
 
-  function drawFish() {
+  // the muyu's outline: domed on top, flattened where it sits
+  function bodyPath(rx, ry) {
+    ctx.beginPath();
+    ctx.moveTo(-rx, ry * 0.05);
+    ctx.bezierCurveTo(-rx, -ry * 0.62, -rx * 0.58, -ry, 0, -ry);
+    ctx.bezierCurveTo(rx * 0.58, -ry, rx, -ry * 0.62, rx, ry * 0.05);
+    ctx.bezierCurveTo(rx, ry * 0.5, rx * 0.74, ry * 0.8, rx * 0.4, ry * 0.85);
+    ctx.lineTo(-rx * 0.4, ry * 0.85);
+    ctx.bezierCurveTo(-rx * 0.74, ry * 0.8, -rx, ry * 0.5, -rx, ry * 0.05);
+    ctx.closePath();
+  }
+
+  function drawFish(flicker = 1) {
     const sq = clamp(squash, -0.2, 0.2);
     ctx.save();
     ctx.translate(cx, cy + R * 0.7);
@@ -560,27 +809,63 @@
     ctx.translate(0, -R * 0.7);
     const rx = R, ry = R * 0.82;
 
-    // body: deep red-brown lacquer over wood
-    const body = ctx.createRadialGradient(-R * 0.35, -R * 0.4, R * 0.05, 0, 0, R * 1.05);
-    body.addColorStop(0, "#d56a3a");
+    // body: deep red-brown lacquer over camphor wood
+    const body = ctx.createRadialGradient(-R * 0.35, -R * 0.42, R * 0.05, 0, 0, R * 1.05);
+    body.addColorStop(0, "#d86d3c");
     body.addColorStop(0.35, "#9c3417");
-    body.addColorStop(0.8, "#561808");
-    body.addColorStop(1, "#2c0b03");
+    body.addColorStop(0.78, "#561808");
+    body.addColorStop(1, "#2a0a03");
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fill();
+    bodyPath(rx, ry);
+    ctx.fill();
 
-    // carved scales across the back
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.clip();
-    ctx.strokeStyle = "rgba(255,190,110,0.16)";
-    ctx.lineWidth = Math.max(1, R * 0.018);
+    bodyPath(rx, ry);
+    ctx.clip();
+    // the grain of the wood showing through the lacquer
+    ctx.strokeStyle = "rgba(40,8,2,0.13)";
+    ctx.lineWidth = Math.max(0.8, R * 0.009);
+    for (let k = 1; k < 12; k++) {
+      ctx.beginPath();
+      ctx.ellipse(R * 0.08, R * 0.32, rx * (0.16 + k * 0.085), ry * (0.12 + k * 0.08), 0.04, Math.PI * 1.02, Math.PI * 1.98);
+      ctx.stroke();
+    }
+    // carved scales across the back: a dark groove and a lit lip on each
     const sc = R * 0.2;
     for (let row = 0; row < 4; row++) {
-      const yy = -ry * 0.75 + row * sc * 0.75;
+      const yy = -ry * 0.78 + row * sc * 0.72;
       for (let xx = -rx + (row % 2) * sc * 0.5; xx < rx; xx += sc) {
+        const fade = 1 - row * 0.18;
+        ctx.strokeStyle = `rgba(30,6,2,${0.32 * fade})`;
+        ctx.lineWidth = Math.max(1, R * 0.02);
         ctx.beginPath(); ctx.arc(xx, yy, sc * 0.5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        ctx.strokeStyle = `rgba(255,190,120,${0.16 * fade})`;
+        ctx.lineWidth = Math.max(0.8, R * 0.012);
+        ctx.beginPath(); ctx.arc(xx, yy + R * 0.014, sc * 0.5, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
       }
     }
+    // candlelight wrapping round each side
+    ctx.globalCompositeOperation = "lighter";
+    for (const c of candles) {
+      const side = Math.sign(c.x - cx), f = flicker + 0.06 * Math.sin(time * 9 + c.p);
+      const lx = side * rx * 0.92, ly = -ry * 0.1;
+      const rg = ctx.createRadialGradient(lx, ly, 0, lx, ly, R * 0.75);
+      rg.addColorStop(0, `rgba(255,150,70,${0.32 * f})`);
+      rg.addColorStop(1, "rgba(255,150,70,0)");
+      ctx.fillStyle = rg;
+      ctx.fillRect(lx - R * 0.75, ly - R * 0.75, R * 1.5, R * 1.5);
+    }
+    if (glow > 0.01) {
+      ctx.fillStyle = `rgba(255,170,90,${0.12 * glow})`;
+      ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
+    // it darkens where it sits in the cushion
+    const ao = ctx.createLinearGradient(0, ry * 0.4, 0, ry * 0.86);
+    ao.addColorStop(0, "rgba(20,4,1,0)");
+    ao.addColorStop(1, "rgba(20,4,1,0.55)");
+    ctx.fillStyle = ao;
+    ctx.fillRect(-rx, ry * 0.4, rx * 2, ry * 0.5);
     ctx.restore();
 
     // the mouth: a long smiling slit that curls into a round hole at each end
@@ -592,56 +877,96 @@
     };
     ctx.lineCap = "round";
     slit();
-    ctx.strokeStyle = "rgba(255,170,110,0.22)"; // lit lower lip
-    ctx.lineWidth = R * 0.12;
-    ctx.save(); ctx.translate(0, R * 0.03); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = "rgba(255,170,110,0.24)"; // lit lower lip
+    ctx.lineWidth = R * 0.13;
+    ctx.save(); ctx.translate(0, R * 0.035); ctx.stroke(); ctx.restore();
     slit();
-    ctx.strokeStyle = "#140402";
-    ctx.lineWidth = R * 0.08;
+    ctx.strokeStyle = "#120302";
+    ctx.lineWidth = R * 0.085;
     ctx.stroke();
+    // the hollow inside answers each strike with a faint warm glow
+    if (glow > 0.02) {
+      slit();
+      ctx.strokeStyle = `rgba(255,120,50,${0.25 * glow})`;
+      ctx.lineWidth = R * 0.03;
+      ctx.stroke();
+    }
     for (const side of [-1, 1]) {
-      ctx.fillStyle = "#140402";
-      ctx.beginPath(); ctx.arc(side * mw, my, R * 0.1, 0, TAU); ctx.fill();
-      ctx.strokeStyle = "rgba(240,180,90,0.55)";
-      ctx.lineWidth = Math.max(1, R * 0.02);
-      ctx.beginPath(); ctx.arc(side * mw, my, R * 0.14, 0, TAU); ctx.stroke();
+      const hx = side * mw;
+      const hg = ctx.createRadialGradient(hx - side * R * 0.02, my - R * 0.02, 0, hx, my, R * 0.11);
+      hg.addColorStop(0, "#000");
+      hg.addColorStop(1, "#2a0703");
+      ctx.fillStyle = hg;
+      ctx.beginPath(); ctx.arc(hx, my, R * 0.105, 0, TAU); ctx.fill();
+      ctx.strokeStyle = "rgba(240,180,90,0.6)";
+      ctx.lineWidth = Math.max(1, R * 0.022);
+      ctx.beginPath(); ctx.arc(hx, my, R * 0.145, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,230,170,0.35)";
+      ctx.lineWidth = Math.max(0.8, R * 0.01);
+      ctx.beginPath(); ctx.arc(hx, my, R * 0.145, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
     }
     // gilded bands framing the mouth
-    ctx.strokeStyle = "rgba(240,185,95,0.6)";
+    ctx.strokeStyle = "rgba(240,185,95,0.62)";
     ctx.lineWidth = Math.max(1, R * 0.022);
     ctx.beginPath(); ctx.moveTo(-mw * 0.82, my - R * 0.12); ctx.quadraticCurveTo(0, my + R * 0.16, mw * 0.82, my - R * 0.12); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-mw * 0.7, my + R * 0.24); ctx.quadraticCurveTo(0, my + R * 0.52, mw * 0.7, my + R * 0.24); ctx.stroke();
+    // a small lotus carved between the bands
+    ctx.fillStyle = "rgba(240,185,95,0.5)";
+    for (let k = -2; k <= 2; k++) {
+      ctx.save();
+      ctx.translate(0, my + R * 0.42);
+      ctx.rotate(k * 0.42);
+      ctx.beginPath(); ctx.ellipse(0, -R * 0.05, R * 0.022, R * 0.055, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
 
     // carved handle on top: two fish curling into an arch
     const hy = -ry * 0.92;
-    ctx.strokeStyle = "#7a2510";
+    const hgr = ctx.createLinearGradient(0, hy - R * 0.3, 0, hy + R * 0.06);
+    hgr.addColorStop(0, "#a0391a");
+    hgr.addColorStop(1, "#4e1407");
+    ctx.strokeStyle = hgr;
     ctx.lineWidth = R * 0.13;
     ctx.beginPath(); ctx.moveTo(-R * 0.3, hy + R * 0.06); ctx.bezierCurveTo(-R * 0.28, hy - R * 0.32, R * 0.28, hy - R * 0.32, R * 0.3, hy + R * 0.06); ctx.stroke();
-    ctx.strokeStyle = "rgba(255,170,100,0.35)";
-    ctx.lineWidth = R * 0.04;
+    ctx.strokeStyle = "rgba(255,180,110,0.4)";
+    ctx.lineWidth = R * 0.035;
     ctx.beginPath(); ctx.moveTo(-R * 0.26, hy - R * 0.02); ctx.bezierCurveTo(-R * 0.24, hy - R * 0.3, R * 0.2, hy - R * 0.32, R * 0.24, hy - R * 0.08); ctx.stroke();
+    // little carved fins along the arch
+    ctx.strokeStyle = "rgba(30,6,2,0.4)";
+    ctx.lineWidth = Math.max(0.8, R * 0.01);
+    for (let k = -2; k <= 2; k++) {
+      const t = 0.5 + k * 0.12, ax = lerp(-R * 0.28, R * 0.28, t), ay = hy - R * 0.24 * Math.sin(t * Math.PI);
+      ctx.beginPath(); ctx.moveTo(ax - R * 0.02, ay + R * 0.03); ctx.lineTo(ax + R * 0.02, ay - R * 0.03); ctx.stroke();
+    }
     for (const side of [-1, 1]) {
       ctx.fillStyle = "#140402";
-      ctx.beginPath(); ctx.arc(side * R * 0.19, hy - R * 0.14, R * 0.025, 0, TAU); ctx.fill(); // the little fish eyes
+      ctx.beginPath(); ctx.arc(side * R * 0.19, hy - R * 0.14, R * 0.026, 0, TAU); ctx.fill(); // the little fish eyes
+      ctx.fillStyle = "rgba(255,220,170,0.6)";
+      ctx.beginPath(); ctx.arc(side * R * 0.19 - R * 0.008, hy - R * 0.148, R * 0.008, 0, TAU); ctx.fill();
     }
 
-    // lacquer shine: a soft window reflection and a sharp glint
+    // lacquer shine: a soft window reflection and a sharp glint for each candle
     ctx.save();
-    ctx.translate(-R * 0.42, -R * 0.42);
+    ctx.translate(-R * 0.42, -R * 0.44);
     ctx.rotate(-0.6);
     const sh = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.42);
-    sh.addColorStop(0, `rgba(255,235,210,${0.42 + glow * 0.2})`);
-    sh.addColorStop(1, "rgba(255,235,210,0)");
+    sh.addColorStop(0, `rgba(220,230,255,${0.3 + glow * 0.15})`); // the moon window, cool
+    sh.addColorStop(1, "rgba(220,230,255,0)");
     ctx.fillStyle = sh;
     ctx.scale(1, 0.5);
     ctx.beginPath(); ctx.arc(0, 0, R * 0.42, 0, TAU); ctx.fill();
     ctx.restore();
+    for (const c of candles) {
+      const side = Math.sign(c.x - cx), f = flicker + 0.06 * Math.sin(time * 9 + c.p);
+      ctx.fillStyle = `rgba(255,236,200,${0.75 * f})`;
+      ctx.beginPath(); ctx.ellipse(side * R * 0.7, -R * 0.42, R * 0.045, R * 0.022, side * 0.7, 0, TAU); ctx.fill();
+    }
     ctx.fillStyle = "rgba(255,248,235,0.85)";
-    ctx.beginPath(); ctx.arc(-R * 0.5, -R * 0.45, R * 0.035, 0, TAU); ctx.fill();
-    // candle reflections along the rim
-    ctx.strokeStyle = "rgba(255,190,120,0.25)";
-    ctx.lineWidth = Math.max(1, R * 0.03);
-    ctx.beginPath(); ctx.ellipse(0, 0, rx * 0.95, ry * 0.95, 0, 0.15 * Math.PI, 0.45 * Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-R * 0.5, -R * 0.47, R * 0.03, 0, TAU); ctx.fill();
+    // a fine rim of light along the top edge
+    ctx.strokeStyle = "rgba(255,190,130,0.22)";
+    ctx.lineWidth = Math.max(1, R * 0.018);
+    ctx.beginPath(); ctx.ellipse(0, -ry * 0.02, rx * 0.97, ry * 0.97, 0, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
     ctx.restore();
   }
 
@@ -678,6 +1003,18 @@
     hg.addColorStop(1, "#4a2a12");
     ctx.fillStyle = hg;
     ctx.beginPath(); ctx.arc(hx, hy, m.headR, 0, TAU); ctx.fill();
+    ctx.fillStyle = "rgba(255,240,210,0.55)";
+    ctx.beginPath(); ctx.ellipse(hx - m.headR * 0.4, hy - m.headR * 0.4, m.headR * 0.22, m.headR * 0.12, -0.7, 0, TAU); ctx.fill();
+    // a red tassel swinging from the end of the grip
+    const ex = m.px - ux * back, ey = m.py - uy * back, sw = Math.sin(time * 1.6) * R * 0.03 - (mallet.t < 1 ? (1 - mallet.t) * R * 0.08 : 0);
+    ctx.strokeStyle = "#8e1a19";
+    ctx.lineWidth = Math.max(1, R * 0.015);
+    ctx.beginPath(); ctx.moveTo(ex, ey); ctx.quadraticCurveTo(ex + sw * 0.5, ey + R * 0.12, ex + sw, ey + R * 0.22); ctx.stroke();
+    ctx.fillStyle = "#e0b04f";
+    ctx.beginPath(); ctx.arc(ex + sw, ey + R * 0.22, R * 0.022, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "#b32523";
+    ctx.lineWidth = Math.max(1, R * 0.012);
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(ex + sw, ey + R * 0.23); ctx.lineTo(ex + sw * 1.15 + k * R * 0.01, ey + R * 0.34); ctx.stroke(); }
   }
 
   function drawMotes() {

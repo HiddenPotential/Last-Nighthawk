@@ -33,8 +33,91 @@
 
   let time = 0;
 
+  // ---------- Quotes ----------
+  // Lanterns can carry a quote on a paper strip. Quotes live on server.py, shared by everyone who
+  // opens the game from it; this device keeps a copy, plus anything it wrote that hasn't reached
+  // the server yet (sent again on the next sync). Served without server.py they stay on this device.
+  const QKEY = "drift-lantern-quotes-v1", DRAFT_KEY = "drift-lantern-draft", MAX_QUOTE = 160;
+  const qs = { quotes: [], pending: [], mine: [] };
+  try { Object.assign(qs, JSON.parse(localStorage.getItem(QKEY) || "{}")); } catch (_) { /* storage unavailable */ }
+  const saveQs = () => { try { localStorage.setItem(QKEY, JSON.stringify(qs)); } catch (_) { /* ignore */ } };
+  let online = false, syncing = false, synced = false, deck = [];
+  const pool = () => qs.quotes.concat(qs.pending);
+  const isMine = (q) => qs.mine.includes(q.id);
+
+  // quotes come up in a shuffled order; ones nobody here has seen yet jump the queue
+  function nextQuote() {
+    const all = pool();
+    if (!all.length) return null;
+    if (!deck.length) deck = all.map((q) => q.id).sort(() => Math.random() - 0.5);
+    const id = deck.shift();
+    return all.find((q) => q.id === id) || nextQuote();
+  }
+
+  async function sendQuote(q) {
+    const r = await fetch("api/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: q.text }) });
+    if (!r.ok) throw new Error(r.status);
+    const { quote } = await r.json();
+    qs.pending = qs.pending.filter((p) => p.id !== q.id);
+    qs.mine = qs.mine.map((id) => (id === q.id ? quote.id : id)).slice(-200);
+    for (const l of sky) if (l.quote && l.quote.id === q.id) l.quote = quote;
+    if (!qs.quotes.some((x) => x.id === quote.id)) qs.quotes.push(quote);
+    saveQs();
+    return quote;
+  }
+
+  async function sync() {
+    if (syncing) return;
+    syncing = true;
+    try {
+      for (const q of qs.pending.slice()) await sendQuote(q);
+      const r = await fetch("api/quotes", { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      const { quotes } = await r.json();
+      const known = new Set(qs.quotes.map((q) => q.id));
+      const fresh = quotes.filter((q) => !known.has(q.id) && !isMine(q));
+      qs.quotes = quotes;
+      saveQs();
+      online = true;
+      deck = deck.filter((id) => quotes.some((q) => q.id === id));
+      if (synced && here()) {
+        // someone else just wrote one: it goes up from the far shore
+        for (const q of fresh.slice(-3)) {
+          deck = deck.filter((id) => id !== q.id);
+          const l = makeSky(rand(W * 0.15, W * 0.85), HY - rand(4, 20) * S, { z: rand(0.3, 0.7), inflate: 0.5, quote: q });
+          lightUp(l.x, 0.5);
+        }
+      } else deck.unshift(...fresh.map((q) => q.id));
+    } catch (_) {
+      online = false; // no server.py: quotes stay on this device
+    }
+    if (!synced) { synced = true; adoptQuotes(); }
+    syncing = false;
+  }
+
+  // the first time quotes arrive, hang a few on lanterns that are already up
+  function adoptQuotes() {
+    if (sky.some((l) => l.quote)) return;
+    const near = sky.filter((l) => !l.fade && l.z < 2.4).sort((a, b) => a.z - b.z);
+    for (const l of near.slice(0, 3)) {
+      const q = nextQuote();
+      if (!q) break;
+      l.quote = q;
+    }
+  }
+
+  function writeQuote(text) {
+    text = text.split(/\s+/).filter(Boolean).join(" ").slice(0, MAX_QUOTE);
+    if (!text) return null;
+    const q = { id: "local-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, t: Date.now() };
+    qs.pending.push(q);
+    qs.mine.push(q.id);
+    saveQs();
+    return q;
+  }
+
   // ---------- Scene: sky, mountains, moon, shore ----------
-  let mountains = null, moonImg = null;
+  let mountains = null, moonImg = null, milky = null;
   const stars = [], lights = [], reeds = [];
   let moon = { x: 0, y: 0, r: 20 };
   let shooting = null, shootTimer = rand(12, 30);
@@ -64,13 +147,15 @@
       { top: 0.66, span: 0.2, col: [28, 29, 64], rough: 1.3 },
       { top: 0.8, span: 0.13, col: [15, 16, 38], rough: 1.6 },
     ];
-    for (const L of layers) {
+    layers.forEach((L, li) => {
       const n = 256, h = ridge(n, L.rough);
       let lo = Infinity, hi = -Infinity;
       for (const v of h) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+      const pts = [];
+      for (let i = 0; i <= n; i++) pts.push([(i / n) * W, HY * (L.top + L.span * ((h[i] - lo) / (hi - lo || 1) - 0.5) * 2) + 2]);
       m.beginPath();
       m.moveTo(0, HY);
-      for (let i = 0; i <= n; i++) m.lineTo((i / n) * W, HY * (L.top + L.span * ((h[i] - lo) / (hi - lo || 1) - 0.5) * 2) + 2);
+      for (const [x, y] of pts) m.lineTo(x, y);
       m.lineTo(W, HY);
       m.closePath();
       const g = m.createLinearGradient(0, HY * (L.top - L.span), 0, HY);
@@ -78,6 +163,47 @@
       g.addColorStop(1, css(L.col));
       m.fillStyle = g;
       m.fill();
+      if (li < 2) {
+        // moonlight catching the ridgeline
+        m.strokeStyle = `rgba(190,200,255,${li === 0 ? 0.16 : 0.1})`;
+        m.lineWidth = 1.2;
+        m.beginPath();
+        pts.forEach(([x, y], i) => (i ? m.lineTo(x, y + 0.6) : m.moveTo(x, y + 0.6)));
+        m.stroke();
+        // mist pooling in the valleys in front of it
+        const mg = m.createLinearGradient(0, HY * (L.top + L.span * 0.2), 0, HY);
+        mg.addColorStop(0, "rgba(96,100,160,0)");
+        mg.addColorStop(1, "rgba(96,100,160,0.14)");
+        m.fillStyle = mg;
+        m.fillRect(0, HY * (L.top + L.span * 0.2), W, HY * (1 - L.top - L.span * 0.2));
+      } else {
+        // a fringe of pines along the nearest ridge
+        m.fillStyle = css(L.col);
+        for (let x = rand(0, 5); x < W; x += rand(3, 8)) {
+          const i = Math.min(n, Math.round((x / W) * n)), y = pts[i][1], th = rand(3, 10) * Math.max(0.7, S);
+          m.beginPath(); m.moveTo(x - th * 0.32, y + 1); m.lineTo(x, y - th); m.lineTo(x + th * 0.32, y + 1); m.fill();
+        }
+      }
+    });
+    // the Milky Way, a faint band of dust across the sky
+    milky = document.createElement("canvas");
+    milky.width = Math.ceil(W);
+    milky.height = Math.ceil(HY);
+    const mk = milky.getContext("2d");
+    mk.translate(W * 0.5, HY * 0.35);
+    mk.rotate(-0.42);
+    for (let i = 0; i < 26; i++) {
+      const x = rand(-W * 0.7, W * 0.7), y = rand(-1, 1) * HY * 0.06, r = rand(30, 90) * Math.max(0.6, S);
+      const bg = mk.createRadialGradient(x, y, 0, x, y, r);
+      bg.addColorStop(0, "rgba(170,175,230,0.05)");
+      bg.addColorStop(1, "rgba(170,175,230,0)");
+      mk.fillStyle = bg;
+      mk.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < (W * HY) / 900; i++) {
+      const x = rand(-W * 0.7, W * 0.7), y = (Math.random() + Math.random() + Math.random() - 1.5) * HY * 0.09;
+      mk.fillStyle = `rgba(225,228,255,${rand(0.08, 0.3)})`;
+      mk.fillRect(x, y, 0.8, 0.8);
     }
     // mist settling along the far shore
     const mist = m.createLinearGradient(0, HY * 0.82, 0, HY);
@@ -145,8 +271,10 @@
     const l = {
       x, y, vx: 0, vy: 0, z: opt.z || 0, zr: rand(0.025, 0.05), size: (opt.size || rand(26, 34)) * S, grow: 1,
       col: opt.col || pickColor(), ph: rand(0, TAU), rot: 0, vr: 0, age: 0, inflate: opt.inflate ?? 0, held: !!opt.held,
-      rise: rand(15, 24) * S, fade: 0, alpha: 0, chimed: false,
+      rise: rand(15, 24) * S, fade: 0, alpha: 0, chimed: false, quote: opt.quote || null,
     };
+    // a lantern carrying words rises slower, so there's time to read it
+    if (l.quote) { l.rise *= 0.65; l.zr *= 0.6; }
     sky.push(l);
     return l;
   }
@@ -173,7 +301,7 @@
     for (let k = 0; k < n; k++) {
       setTimeout(() => {
         if (!here()) return;
-        const l = makeSky(rand(W * 0.1, W * 0.9), HY - rand(4, 26) * S, { z: rand(0.5, 1.2), inflate: 0.5 });
+        const l = makeSky(rand(W * 0.1, W * 0.9), HY - rand(4, 26) * S, { z: rand(0.5, 1.2), inflate: 0.5, quote: k % 3 === 1 ? nextQuote() : null });
         lightUp(l.x, 0.5);
         Z.bell(Z.noteFreq(5 + k), 0.024, l.x, 3.4);
       }, k * 380);
@@ -257,8 +385,21 @@
   }
 
   // ---------- Input ----------
-  const ptr = { down: false, id: null, x: 0, y: 0, sx: 0, sy: 0, lx: 0, ly: 0, st: 0, moved: false, held: null, water: false, trail: 0, touch: 0 };
+  const ptr = { down: false, id: null, x: 0, y: 0, sx: 0, sy: 0, lx: 0, ly: 0, st: 0, moved: false, held: null, water: false, trail: 0, touch: 0, onQuote: null };
   let interactions = 0;
+
+  // the nearest lantern carrying words under a point (its body or its paper strip)
+  function quoteAt(x, y) {
+    let best = null, bd = 1;
+    for (const l of sky) {
+      if (!l.quote || l.fade || l.held) continue;
+      const s = (l.size * l.grow * (0.55 + 0.45 * l.inflate)) / (1 + l.z);
+      if (s < 5) continue;
+      const dx = (x - l.x) / (s * 0.6 + 16 * S), dy = (y - (l.y + s * 0.37)) / (s * 0.9 + 16 * S), d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = l; }
+    }
+    return best;
+  }
 
   function noteInteraction() {
     interactions++;
@@ -270,7 +411,8 @@
     Z.ensureAudio();
     startLoops();
     try { canvas.setPointerCapture?.(e.pointerId); } catch (_) { /* pointer already gone */ }
-    Object.assign(ptr, { down: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, st: time, moved: false, held: null, water: e.clientY > HY + 2, trail: 0, touch: 0 });
+    Object.assign(ptr, { down: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, st: time, moved: false, held: null, water: e.clientY > HY + 2, trail: 0, touch: 0, onQuote: quoteAt(e.clientX, e.clientY) });
+    if (!$("lanterns-write-panel").hidden) closeWriter();
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!ptr.down || e.pointerId !== ptr.id) return;
@@ -286,7 +428,8 @@
       ptr.held.held = false;
       riseChime(ptr.held);
     } else if (!ptr.moved && time - ptr.st < 0.3) {
-      if (ptr.water) makeFloat(ptr.x, ptr.y);
+      if (ptr.onQuote) readQuote(ptr.onQuote);
+      else if (ptr.water) makeFloat(ptr.x, ptr.y);
       else { const l = makeSky(ptr.x, ptr.y); lightUp(l.x); }
     }
     ptr.down = false;
@@ -297,7 +440,7 @@
   canvas.addEventListener("pointercancel", endPointer);
   window.addEventListener("blur", () => endPointer());
   window.addEventListener("keydown", (e) => {
-    if (e.code !== "Space" || e.target.tagName === "BUTTON" || !here()) return;
+    if (e.code !== "Space" || /^(BUTTON|TEXTAREA|INPUT)$/.test(e.target.tagName) || !here()) return;
     e.preventDefault();
     Z.ensureAudio();
     startLoops();
@@ -305,12 +448,12 @@
   });
 
   // ---------- Simulation ----------
-  let ambient = rand(6, 12), bellTimer = rand(25, 50), dragSpeed = 0;
+  let ambient = rand(6, 12), bellTimer = rand(25, 50), dragSpeed = 0, syncT = 30;
   function update(dt) {
     time += dt;
 
     // held still on the sky: a lantern fills with warm air in your hand
-    if (ptr.down && !ptr.moved && !ptr.held && !ptr.water && time - ptr.st > 0.3) {
+    if (ptr.down && !ptr.moved && !ptr.held && !ptr.water && !ptr.onQuote && time - ptr.st > 0.3) {
       ptr.held = makeSky(ptr.x, ptr.y, { held: true });
       lightUp(ptr.x, 0.8);
     }
@@ -356,13 +499,13 @@
       if (!l.held && l.inflate >= 1 && !l.chimed) { l.chimed = true; if (l.age > 1) riseChime(l); }
       if (!l.held) {
         // warm air lifts it once it has filled; the breeze carries it away into the distance
-        const lift = l.inflate >= 1 ? l.rise : l.rise * 0.1;
+        const lift = (l.inflate >= 1 ? l.rise : l.rise * 0.1) * (l === reading ? 0.12 : 1);
         l.vy = lerp(l.vy, -lift, Math.min(1, dt * 0.6));
         l.vx = lerp(l.vx, breeze, Math.min(1, dt * 0.25));
         const k = 1 / (1 + l.z);
         l.x += l.vx * dt * k;
         l.y += l.vy * dt * k;
-        if (l.inflate >= 1) l.z += l.zr * dt * (1 + l.z * 0.3);
+        if (l.inflate >= 1 && l !== reading) l.z += l.zr * dt * (1 + l.z * 0.3);
       }
       // sway on its strings of hot air
       l.vr += (-l.vx * 0.004 + Math.sin(time * 0.8 + l.ph) * 0.03 - l.rot) * dt * 3;
@@ -418,9 +561,14 @@
       setTimeout(() => { if (here()) { Z.bell(Z.noteFreq(14), 0.012, shooting ? shooting.x : W / 2, 2.4); setTimeout(() => here() && Z.bell(Z.noteFreq(16), 0.01, W / 2, 2.4), 120); } }, 80);
     }
     if (shooting && (shooting.age += dt) > 0.9) shooting = null;
+    if (reading && (reading.fade || (readT -= dt) <= 0)) closeNote();
+    if ((syncT -= dt) <= 0) { syncT = 30; sync(); }
     if ((ambient -= dt) <= 0) {
       ambient = rand(14, 30);
-      if (sky.length < MAX_SKY - 6) makeSky(rand(W * 0.08, W * 0.92), HY - rand(2, 10) * S, { z: rand(1.2, 2.2), inflate: 0.7 });
+      if (sky.length < MAX_SKY - 6) {
+        const q = Math.random() < 0.6 ? nextQuote() : null;
+        makeSky(rand(W * 0.08, W * 0.92), HY - rand(2, 10) * S, q ? { z: rand(0.4, 0.9), inflate: 0.7, quote: q } : { z: rand(1.2, 2.2), inflate: 0.7 });
+      }
     }
     if ((bellTimer -= dt) <= 0) { bellTimer = rand(45, 90); templeBell(); }
   }
@@ -499,6 +647,25 @@
     ctx.beginPath();
     ctx.ellipse(0, h / 2 - s * 0.04, s * 0.045, s * 0.08 * flicker(l.ph + 1), 0, 0, TAU);
     ctx.fill();
+    if (l.quote) {
+      // a paper strip with words on it, hanging from the frame and swaying
+      const sl = s * 0.3, sw = Math.max(2.5, s * 0.15), sh = Math.max(6, s * 0.44), sway = Math.sin(time * 1.4 + l.ph) * s * 0.05;
+      ctx.strokeStyle = css(mix(l.col, [60, 20, 10], 0.5), 0.7);
+      ctx.lineWidth = Math.max(0.5, s * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.quadraticCurveTo(sway * 0.3, h / 2 + sl * 0.6, sway, h / 2 + sl);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(sway, h / 2 + sl);
+      ctx.rotate(-l.rot * 0.6 + sway / s);
+      ctx.fillStyle = css(mix([250, 240, 222], l.col, 0.3), 0.6 + 0.35 * b);
+      ctx.fillRect(-sw / 2, 0, sw, sh);
+      // little brush marks
+      ctx.fillStyle = css([70, 40, 30], 0.45);
+      for (let k = 0; k < 3; k++) ctx.fillRect(-sw * 0.18, sh * (0.18 + k * 0.24), sw * 0.36, Math.max(0.6, sh * 0.06));
+      ctx.restore();
+    }
     ctx.restore();
   }
 
@@ -562,6 +729,7 @@
       ctx.fillStyle = wg;
       ctx.fillRect(0, HY * 0.3, W, HY * 0.7);
     }
+    if (milky) ctx.drawImage(milky, 0, 0, W, HY);
     for (const s of stars) {
       const a = s.a * (0.6 + 0.4 * Math.sin(time * s.s + s.p));
       ctx.fillStyle = `rgba(236,240,255,${a})`;
@@ -701,6 +869,82 @@
     Z.ensureAudio();
     Z.bell(Z.noteFreq(7 + opts.color), 0.025, W / 2, 2.4);
   });
+  // reading: a card with the words, while the lantern hangs still on the air
+  let reading = null, readT = 0;
+  const ago = (t) => {
+    const m = (Date.now() - t) / 60000;
+    if (m < 1) return "just now";
+    if (m < 60) return `${Math.round(m)} min ago`;
+    if (m < 60 * 24) return `${Math.round(m / 60)} h ago`;
+    const d = Math.round(m / 1440);
+    return d === 1 ? "yesterday" : `${d} days ago`;
+  };
+  function readQuote(l) {
+    reading = l;
+    readT = 7 + l.quote.text.length * 0.06;
+    $("lantern-note-text").textContent = l.quote.text;
+    $("lantern-note-meta").textContent = `${isMine(l.quote) ? "your lantern" : "a lantern from someone"} · ${ago(l.quote.t)}`;
+    $("lantern-note").classList.add("show");
+    Z.ensureAudio();
+    Z.bell(Z.noteFreq(9), 0.02, l.x, 3);
+    setTimeout(() => here() && Z.bell(Z.noteFreq(12), 0.016, l.x, 3), 160);
+  }
+  function closeNote() {
+    reading = null;
+    $("lantern-note").classList.remove("show");
+  }
+  $("lantern-note").addEventListener("click", closeNote);
+
+  // writing: the draft is saved as you type, and what you send goes up on a lantern
+  const quoteBox = $("lanterns-quote");
+  function writerStatus(text) { $("lanterns-quote-status").textContent = text; }
+  function countUi() { $("lanterns-quote-count").textContent = `${quoteBox.value.length}/${MAX_QUOTE}`; }
+  function openWriter() {
+    closeNote();
+    try { quoteBox.value = localStorage.getItem(DRAFT_KEY) || ""; } catch (_) { /* ignore */ }
+    countUi();
+    writerStatus(online ? "Everyone here can read what you send up." : "No shared server: it stays on this device.");
+    $("lanterns-write-panel").hidden = false;
+    $("lanterns-write").setAttribute("aria-pressed", "true");
+    quoteBox.focus();
+  }
+  function closeWriter() {
+    $("lanterns-write-panel").hidden = true;
+    $("lanterns-write").setAttribute("aria-pressed", "false");
+  }
+  quoteBox.maxLength = MAX_QUOTE;
+  quoteBox.addEventListener("input", () => {
+    try { localStorage.setItem(DRAFT_KEY, quoteBox.value); } catch (_) { /* ignore */ }
+    countUi();
+    writerStatus("Draft saved.");
+  });
+  quoteBox.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("lanterns-write-panel").requestSubmit(); }
+    if (e.key === "Escape") closeWriter();
+  });
+  $("lanterns-write").addEventListener("click", () => ($("lanterns-write-panel").hidden ? openWriter() : closeWriter()));
+  $("lanterns-write-cancel").addEventListener("click", closeWriter);
+  $("lanterns-write-panel").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = writeQuote(quoteBox.value);
+    if (!q) { quoteBox.focus(); return; }
+    quoteBox.value = "";
+    try { localStorage.removeItem(DRAFT_KEY); } catch (_) { /* ignore */ }
+    closeWriter();
+    Z.ensureAudio();
+    startLoops();
+    // it fills with warm air just above the water, then rises
+    const l = makeSky(W * rand(0.4, 0.6), HY - 30 * S, { quote: q, size: 36 });
+    lightUp(l.x);
+    noteInteraction();
+    try {
+      await sendQuote(q);
+      online = true;
+    } catch (_) {
+      online = false; // kept in pending; the next sync sends it
+    }
+  });
+
   $("lanterns-music").addEventListener("click", () => Z.setMusic(!Z.settings.music));
   $("lanterns-sound").addEventListener("click", () => Z.setSound(!Z.settings.sound));
 
@@ -751,11 +995,12 @@
   }
 
   if (new URLSearchParams(location.search).has("debug")) {
-    window.__lanterns = { sky, floats, ripples, embers, opts, ptr, update, render, makeSky, makeFloat, release, get HY() { return HY; } };
+    window.__lanterns = { sky, floats, ripples, embers, opts, ptr, update, render, makeSky, makeFloat, release, qs, sync, quoteAt, readQuote, get online() { return online; }, get reading() { return reading; }, get HY() { return HY; } };
   }
 
   resize();
   seedOnce();
   syncUi();
+  sync();
   requestAnimationFrame(frame);
 })();

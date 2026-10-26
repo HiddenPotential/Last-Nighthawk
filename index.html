@@ -12,7 +12,7 @@
 
   <div id="title" class="title" data-for="orbs">
     <h1>Drift</h1>
-    <p>Tap to create · Drag to fling · Hold to pull · Swipe to stir · Tap an orb to pop · Scroll to resize</p>
+    <p>Tap to create · Drag to fling · Hold to pull · Swipe to stir · Tap an orb to pop</p>
   </div>
 
   <div id="caption" data-for="orbs" aria-live="polite"></div>
@@ -20,11 +20,6 @@
   <nav id="bar" class="bar" data-for="orbs" aria-label="Orb settings">
     <button id="mode" type="button" title="Motion"><span class="ico" id="mode-ico">◌</span><span class="lbl" id="mode-lbl">Float</span></button>
     <button id="theme" type="button" title="Colors"><span class="ico swatch" id="theme-ico"></span><span class="lbl" id="theme-lbl">Aurora</span></button>
-    <label class="size" title="Orb size (or scroll over the orbs)">
-      <span class="ico small-dot" aria-hidden="true"></span>
-      <input id="size" type="range" min="0.5" max="2" step="0.05" value="1" aria-label="Orb size" />
-      <span class="ico big-dot" aria-hidden="true"></span>
-    </label>
     <button id="auto" type="button" title="Orbs appear on their own" aria-pressed="false"><span class="ico">✺</span><span class="lbl" id="auto-lbl">Auto off</span></button>
     <label class="size" id="auto-speed-wrap" title="Auto spawn speed">
       <span class="ico speed-ico" aria-hidden="true">·</span>
@@ -74,10 +69,29 @@
 
   <div id="lanterns-title" class="title away" data-for="lanterns">
     <h1>Lanterns</h1>
-    <p>Tap the sky to light a lantern · Hold to let a bigger one fill · Tap the lake to float one · Drag to send a breeze</p>
+    <p>Tap the sky to light a lantern · Hold to let a bigger one fill · Tap the lake to float one · Drag to send a breeze · Tap a lantern with a paper strip to read it</p>
   </div>
 
+  <div id="lantern-note" data-for="lanterns" class="away" role="status" aria-live="polite" title="Tap to close">
+    <p id="lantern-note-text"></p>
+    <span id="lantern-note-meta"></span>
+  </div>
+
+  <form id="lanterns-write-panel" data-for="lanterns" class="away" hidden autocomplete="off">
+    <label for="lanterns-quote">Write on a lantern</label>
+    <textarea id="lanterns-quote" rows="3" maxlength="160" placeholder="A quote, a wish, a kind word…"></textarea>
+    <div class="lw-row">
+      <span id="lanterns-quote-status" aria-live="polite"></span>
+      <span id="lanterns-quote-count">0/160</span>
+    </div>
+    <div class="lw-row lw-actions">
+      <button type="button" id="lanterns-write-cancel">Close</button>
+      <button type="submit" id="lanterns-write-send">Send it up ⇡</button>
+    </div>
+  </form>
+
   <nav id="lanterns-bar" class="bar away" data-for="lanterns" aria-label="Lantern settings">
+    <button id="lanterns-write" type="button" title="Write a quote on a lantern" aria-pressed="false" aria-controls="lanterns-write-panel"><span class="ico">✎</span><span class="lbl">Write</span></button>
     <button id="lanterns-release" type="button" title="Release lanterns along the shore (Space)"><span class="ico">⇡</span><span class="lbl">Release</span></button>
     <button id="lanterns-color" type="button" title="Lantern color"><span class="ico swatch" id="lanterns-color-ico"></span><span class="lbl" id="lanterns-color-lbl">Amber</span></button>
     <button id="lanterns-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="lanterns-music-lbl">Music on</span></button>
@@ -133,6 +147,21 @@
     <button id="pane-sound" type="button" title="Sound"><span class="ico" id="pane-sound-ico">♪</span><span class="lbl" id="pane-sound-lbl">Sound on</span></button>
   </nav>
 
+  <canvas id="hearth" data-for="hearth" class="away" aria-label="A fireplace on a quiet night"></canvas>
+
+  <div id="hearth-title" class="title away" data-for="hearth">
+    <h1>Hearth</h1>
+    <p>Tap the fire to poke it · Hold to fan the flames · Drag to sway them · Tap the basket to add a log · Tap the cat</p>
+  </div>
+
+  <nav id="hearth-bar" class="bar away" data-for="hearth" aria-label="Hearth settings">
+    <button id="hearth-log" type="button" title="Lay a log on the fire (Space)"><span class="ico">≡</span><span class="lbl">Add log</span></button>
+    <button id="hearth-poke" type="button" title="Poke the fire"><span class="ico">✷</span><span class="lbl">Poke</span></button>
+    <button id="hearth-keep" type="button" title="Add logs on its own when the fire runs low" aria-pressed="true"><span class="ico">∞</span><span class="lbl" id="hearth-keep-lbl">Keep it going</span></button>
+    <button id="hearth-music" type="button" title="Background music" aria-pressed="true"><span class="ico">♫</span><span class="lbl" id="hearth-music-lbl">Music on</span></button>
+    <button id="hearth-sound" type="button" title="Sound"><span class="ico" id="hearth-sound-ico">♪</span><span class="lbl" id="hearth-sound-lbl">Sound on</span></button>
+  </nav>
+
   <nav id="places" aria-label="Places">
     <button type="button" data-place="orbs" aria-pressed="true"><span class="ico">◌</span><span class="lbl">Orbs</span></button>
     <button type="button" data-place="pond" aria-pressed="false"><span class="ico">≈</span><span class="lbl">Pond</span></button>
@@ -141,6 +170,7 @@
     <button type="button" data-place="woodfish" aria-pressed="false" title="Wooden fish"><span class="ico">◖</span><span class="lbl">Muyu</span></button>
     <button type="button" data-place="bamboo" aria-pressed="false" title="Bamboo grove"><span class="ico">ǁ</span><span class="lbl">Bamboo</span></button>
     <button type="button" data-place="window" aria-pressed="false" title="Rainy window"><span class="ico">⊞</span><span class="lbl">Window</span></button>
+    <button type="button" data-place="hearth" aria-pressed="false" title="Fireplace"><span class="ico">♨︎</span><span class="lbl">Hearth</span></button>
   </nav>
 
   <script src="game.js"></script>
@@ -150,6 +180,7 @@
   <script src="woodfish.js"></script>
   <script src="bamboo.js"></script>
   <script src="window.js"></script>
+  <script src="hearth.js"></script>
   <div id="sounds">
     <button id="sounds-btn" type="button" aria-expanded="false" aria-controls="sounds-panel" title="Ambient sounds">
       <span class="ico" id="sounds-ico">∿</span><span class="lbl" id="sounds-lbl">Sounds</span>

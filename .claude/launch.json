@@ -20,6 +20,35 @@
         "5518"
       ],
       "port": 5518
+    },
+    {
+      "name": "game-3",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5519"
+      ],
+      "port": 5519
+    },
+    {
+      "name": "game-quotes",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "server.py",
+        "5520"
+      ],
+      "port": 5520
+    },
+    {
+      "name": "game-wood",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5521"
+      ],
+      "port": 5521
     }
   ]
 }

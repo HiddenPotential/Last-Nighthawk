@@ -1,4 +1,4 @@
-// Pond: a top-down koi pond. Tap to drop food, hold to call the fish, swipe to stir the water.
+// Pond: a koi pond seen in 3D perspective. Tap to drop food, hold to call the fish, swipe to stir the water.
 // Shares game.js's audio engine and sound/music settings through window.Zen.
 (() => {
   "use strict";
@@ -116,6 +116,7 @@
       const x = rand(r * 0.4, W - r * 0.4), y = rand(r * 0.4, H - r * 0.4);
       if (pads.some((p) => Math.hypot(p.x - x, p.y - y) < p.r + r + 30 * S)) continue;
       if (Math.hypot(x - W / 2, y - H / 2) < Math.min(W, H) * 0.18) continue; // keep the middle open
+      if (!seen(x, y, r * 0.6)) continue; // not in the off-screen corners
       pads.push({ x, y, r, rot: rand(0, TAU), notch: rand(0.3, 0.5), vx: 0, vy: 0, spin: rand(-0.03, 0.03), flower: Math.random() < 0.4, bob: rand(0, TAU), shade: rand(-0.08, 0.08) });
     }
   }
@@ -275,12 +276,14 @@
     Z.ensureAudio();
     startLoops();
     canvas.setPointerCapture?.(e.pointerId);
-    Object.assign(ptr, { down: true, id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, st: time, moved: false, trail: 0 });
+    const q = toPond(e.clientX, e.clientY); // the view is in perspective: find where the finger meets the water
+    Object.assign(ptr, { down: true, id: e.pointerId, x: q.x, y: q.y, sx: q.x, sy: q.y, lx: q.x, ly: q.y, st: time, moved: false, trail: 0 });
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!ptr.down || e.pointerId !== ptr.id) return;
-    ptr.x = e.clientX;
-    ptr.y = e.clientY;
+    const q = toPond(e.clientX, e.clientY);
+    ptr.x = q.x;
+    ptr.y = q.y;
     if (!call && Math.hypot(ptr.x - ptr.sx, ptr.y - ptr.sy) > 10) ptr.moved = true;
     if (call) { call.x = ptr.x; call.y = ptr.y; } // the koi follow a held finger
   });
@@ -317,9 +320,9 @@
   // somewhere new to swim to, not too close; now and then a rest instead
   function pickGoal(f) {
     const m = f.L + 50 * S;
-    for (let k = 0; k < 8; k++) {
+    for (let k = 0; k < 14; k++) {
       const x = rand(m, Math.max(m, W - m)), y = rand(m, Math.max(m, H - m));
-      if (Math.hypot(x - f.x, y - f.y) > f.L * 2.5 || k === 7) { f.goal = { x, y }; break; }
+      if ((Math.hypot(x - f.x, y - f.y) > f.L * 2.5 && seen(x, y, f.L * 0.6)) || k === 13) { f.goal = { x, y }; break; }
     }
     f.goalT = rand(8, 18);
     f.cruise = rand(20, 38) * S;
@@ -578,17 +581,41 @@
   function pose(f) {
     const amp = f.L * 0.085 * f.amp;
     const wmax = f.L * 0.12;
+    // the wave runs head to tail, mostly in the back half; the body also bends into turns
+    const wave = (k) => Math.sin(f.tail - k * 5.2) * amp * (0.06 + 0.94 * k * k) + f.av * f.L * 0.05 * k * k;
     for (let i = 0; i < SEG; i++) {
       const s = f.segs[i], q = f.segs[Math.max(0, i - 1)], r = f.segs[Math.min(SEG - 1, i + 1)];
       let dx = q.x - r.x, dy = q.y - r.y;
       const len = Math.hypot(dx, dy) || 1;
       dx /= len;
       dy /= len;
-      const k = i / (SEG - 1);
-      // the wave runs head to tail, mostly in the back half; the body also bends into turns
-      const off = Math.sin(f.tail - k * 5.2) * amp * (0.06 + 0.94 * k * k) + f.av * f.L * 0.05 * k * k;
-      Object.assign(P[i], { x: s.x - dy * off, y: s.y + dx * off, nx: -dy, ny: dx, a: Math.atan2(dy, dx), w: wmax * width(k) });
+      const k = i / (SEG - 1), off = wave(k);
+      Object.assign(P[i], { x: s.x - dy * off, y: s.y + dx * off, w: wmax * width(k) });
     }
+    // cross-sections face along the line actually drawn (the waved one), not the straight spine,
+    // so the body never shears or twists where the wave is strongest
+    let pnx = 0, pny = 0;
+    for (let i = 0; i < SEG; i++) {
+      const q = P[Math.max(0, i - 1)], r = P[Math.min(SEG - 1, i + 1)];
+      let dx = q.x - r.x, dy = q.y - r.y;
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len;
+      dy /= len;
+      let nx = -dy, ny = dx;
+      if (i && nx * pnx + ny * pny < 0) { nx = -nx; ny = -ny; } // never let a slice flip over
+      Object.assign(P[i], { nx, ny, a: Math.atan2(dy, dx) });
+      pnx = nx;
+      pny = ny;
+    }
+    // the tail fin points to where the swimming wave would carry on past the body,
+    // so it always follows through the tail's sweep instead of kinking against it
+    const a = f.segs[SEG - 2], b = f.segs[SEG - 1];
+    let tx = b.x - a.x, ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const off = wave(1.27), last = P[SEG - 1];
+    P.fin = Math.atan2(b.y + ty * f.L * 0.27 - tx * off - last.y, b.x + tx * f.L * 0.27 + ty * off - last.x);
   }
 
   function curveThrough(pts) {
@@ -619,6 +646,44 @@
     return { x: lerp(a.x, b.x, u) + lerp(a.nx, b.nx, u) * w, y: lerp(a.y, b.y, u) + lerp(a.ny, b.ny, u) * w, a: lerp(a.a, a.a + angleDiff(b.a, a.a), u) };
   }
 
+  // light for the 3D bodies: from the upper left and above, matching the shadows on the pond floor
+  const LIGHT = (() => { const v = [-0.55, -0.76, 0.42], l = Math.hypot(...v); return v.map((c) => c / l); })();
+  const HALF = (() => { const v = [LIGHT[0], LIGHT[1], LIGHT[2] + 1], l = Math.hypot(...v); return v.map((c) => c / l); })();
+
+  // cross-section rings from the snout to the tail root: a rounded head cap, then the posed spine
+  // (with an extra ring between each pair for smoothness)
+  function bodyRings() {
+    const out = [], p0 = P[0], fx = Math.cos(p0.a), fy = Math.sin(p0.a), cap = p0.w * 1.35;
+    for (let k = 0; k < 4; k++) {
+      const u = k / 4;
+      out.push({ x: p0.x + fx * cap * (1 - u), y: p0.y + fy * cap * (1 - u), nx: p0.nx, ny: p0.ny, w: p0.w * Math.sqrt(1 - (1 - u) ** 2), t: -(1 - u) * 0.06 });
+    }
+    for (let i = 0; i < SEG; i++) {
+      const a = P[i];
+      out.push({ x: a.x, y: a.y, nx: a.nx, ny: a.ny, w: a.w, t: i / (SEG - 1) });
+      if (i < SEG - 1) {
+        const b = P[i + 1];
+        let nx = a.nx + b.nx, ny = a.ny + b.ny;
+        const nl = Math.hypot(nx, ny) || 1;
+        nx /= nl;
+        ny /= nl;
+        out.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, nx, ny, w: (a.w + b.w) / 2, t: (i + 0.5) / (SEG - 1) });
+      }
+    }
+    return out;
+  }
+
+  // the koi's colour at a spot on its skin: t along the body, s across it (-1..1), w the local half-width
+  function skinColor(f, t, s, w) {
+    let c = f.v.base;
+    for (const sp of f.spots) {
+      const dt = (t - sp.t) / (sp.r * 1.35), ds = ((s - sp.s * 0.9) * w) / (sp.r * f.L);
+      const cover = clamp((1.12 - Math.hypot(dt, ds)) / 0.24, 0, 1);
+      if (cover > 0) c = mix(c, sp.c, cover);
+    }
+    return c;
+  }
+
   function fishShadow(f) {
     pose(f);
     const lift = (0.35 + (1 - f.depth) * 0.9) * f.L * 0.3;
@@ -643,8 +708,8 @@
     ctx.globalAlpha = 1 - f.depth * 0.3;
 
     // fins (under the body): tail, then pectorals
-    const last = P[SEG - 1], swish = Math.sin(f.tail - 5.8) * 0.55 * f.amp + f.av * 0.12;
-    const back = last.a + Math.PI + swish, bx = Math.cos(back), by = Math.sin(back), sx = -by, sy = bx;
+    const last = P[SEG - 1];
+    const back = P.fin, bx = Math.cos(back), by = Math.sin(back), sx = -by, sy = bx;
     const Lt = f.L * 0.27, rw = last.w * 1.3;
     const tg = ctx.createLinearGradient(last.x, last.y, last.x + bx * Lt, last.y + by * Lt);
     tg.addColorStop(0, css(f.fin, 0.78));
@@ -687,65 +752,80 @@
       ctx.fill();
     }
 
-    // body with its pattern
-    bodyPath();
+    // solid 3D body: lofted as a tube of oval rings, and every small patch of skin is lit from its
+    // own surface angle (soft diffuse light, dark flanks, a sharp wet highlight), so the pattern
+    // sits on a properly rounded body. Drawn opaque, with the depth fade mixed into the colour.
+    const lx = -0.57, ly = -0.82; // light direction on screen, for the eye catch-lights
     ctx.save();
-    ctx.clip();
-    ctx.fillStyle = css(f.v.base);
-    ctx.fill();
-    for (const sp of f.spots) {
-      const c = bodyPoint(sp.t, sp.s * 0.9);
-      ctx.fillStyle = css(sp.c);
-      ctx.beginPath();
-      ctx.ellipse(c.x, c.y, sp.r * f.L * 1.35, sp.r * f.L, c.a, 0, TAU);
-      ctx.fill();
-    }
-    // 3D shading: the body is a rounded tube lit from the upper left (the same light that casts the shadows)
-    const lx = -0.57, ly = -0.82;
-    const toLight = P[3].nx * lx + P[3].ny * ly >= 0 ? 1 : -1; // which side of the spine faces the light
-    const roll = clamp(angleDiff(P[0].a, P[6].a) * 1.4, -0.45, 0.45); // fish bank into their turns
-    // a soft shadow wrapping the whole edge, where the body curves away
-    bodyPath();
-    for (const [w, al] of [[1.6, 0.06], [1.0, 0.09], [0.5, 0.12]]) {
-      ctx.lineWidth = P[2].w * w;
-      ctx.strokeStyle = `rgba(0,0,0,${al})`;
-      ctx.stroke();
-    }
-    // a line running down the body, pushed across it by k (in body half-widths) plus the roll
-    const ridge = (k, upto) => {
-      ctx.beginPath();
-      for (let i = 0; i < upto; i++) {
-        const p = P[i], o = p.w * (k + roll * toLight);
-        const x = p.x + p.nx * o, y = p.y + p.ny * o;
-        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-      }
-    };
-    ctx.lineCap = "round";
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 0.7;
     ctx.lineJoin = "round";
-    // the flank away from the light falls into shade
-    ridge(-0.62 * toLight, SEG - 3);
-    for (const [w, al] of [[1.1, 0.07], [0.6, 0.1]]) {
-      ctx.lineWidth = P[2].w * w;
-      ctx.strokeStyle = `rgba(0,0,0,${al})`;
-      ctx.stroke();
-    }
-    // a glossy highlight along the back, toward the light
-    const gloss = f.v.sheen ? 1.5 + 0.5 * Math.sin(time * 2 + f.phase) : 1;
-    ridge(0.3 * toLight, SEG - 4);
-    for (const [w, al] of [[0.95, 0.06], [0.5, 0.1], [0.2, 0.22]]) {
-      ctx.lineWidth = P[2].w * w;
-      ctx.strokeStyle = `rgba(255,252,240,${al * gloss})`;
-      ctx.stroke();
+    const water = mix(pal.mid, pal.deep, 0.5), fade = f.depth * 0.3;
+    // fish bank into their turns and rock a little with each tail beat
+    const roll = clamp(angleDiff(P[0].a, P[6].a) * 1.4, -0.45, 0.45) + Math.sin(f.tail - 1) * 0.06 * f.amp;
+    const gloss = f.v.sheen ? 0.95 + 0.3 * Math.sin(time * 2 + f.phase) : 0.6;
+    const rings = bodyRings();
+    const ACROSS = 9;
+    for (let i = 0; i < rings.length - 1; i++) {
+      const a = rings[i], b = rings[i + 1];
+      let dx = a.x - b.x, dy = a.y - b.y;
+      const dl = Math.hypot(dx, dy) || 1;
+      dx /= dl;
+      dy /= dl; // pointing toward the head
+      const slope = (b.w - a.w) / dl; // the surface tips forward where the body widens toward the tail
+      const t = (a.t + b.t) / 2, w = (a.w + b.w) / 2, nx = (a.nx + b.nx) / 2, ny = (a.ny + b.ny) / 2;
+      for (let j = 0; j < ACROSS; j++) {
+        const th0 = -Math.PI / 2 + (j / ACROSS) * Math.PI, th1 = th0 + Math.PI / ACROSS, th = (th0 + th1) / 2 + roll;
+        // normal of an oval cross-section (0.8 as tall as it is wide), tipped by the taper
+        let Nx = nx * Math.sin(th) * 0.8 + dx * slope * Math.cos(th);
+        let Ny = ny * Math.sin(th) * 0.8 + dy * slope * Math.cos(th);
+        let Nz = Math.cos(th);
+        const nl = Math.hypot(Nx, Ny, Nz) || 1;
+        Nx /= nl;
+        Ny /= nl;
+        Nz /= nl;
+        const diff = Math.max(0, Nx * LIGHT[0] + Ny * LIGHT[1] + Nz * LIGHT[2]);
+        const spec = Math.pow(Math.max(0, Nx * HALF[0] + Ny * HALF[1] + Nz * HALF[2]), 34) * gloss;
+        const skin = skinColor(f, t, Math.sin((th0 + th1) / 2), w);
+        const k = 0.2 + 1.0 * diff;
+        let col = [
+          Math.min(255, skin[0] * k + 255 * spec),
+          Math.min(255, skin[1] * k + 252 * spec),
+          Math.min(255, skin[2] * k + 240 * spec),
+        ];
+        if (fade > 0) col = mix(col, water, fade);
+        const style = css(col);
+        ctx.fillStyle = style;
+        ctx.strokeStyle = style; // a hairline in the same colour hides the seams between patches
+        const s0 = Math.sin(th0), s1 = Math.sin(th1);
+        ctx.beginPath();
+        ctx.moveTo(a.x + a.nx * a.w * s0, a.y + a.ny * a.w * s0);
+        ctx.lineTo(a.x + a.nx * a.w * s1, a.y + a.ny * a.w * s1);
+        ctx.lineTo(b.x + b.nx * b.w * s1, b.y + b.ny * b.w * s1);
+        ctx.lineTo(b.x + b.nx * b.w * s0, b.y + b.ny * b.w * s0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     ctx.restore();
 
-    // dorsal fin: a thin translucent crest along the spine
+    // dorsal fin: a thin crest standing up from the spine, casting a soft shadow on the back
     ctx.lineCap = "round";
-    ctx.strokeStyle = css(mix(f.fin, f.v.base, 0.35), 0.5);
-    ctx.lineWidth = Math.max(0.8, f.L * 0.014);
-    ctx.beginPath();
-    ctx.moveTo(P[3].x, P[3].y);
-    for (let i = 4; i <= 8; i++) ctx.lineTo(P[i].x, P[i].y);
+    ctx.lineJoin = "round";
+    const crest = (ox, oy) => {
+      ctx.beginPath();
+      ctx.moveTo(P[3].x + ox, P[3].y + oy);
+      for (let i = 4; i <= 8; i++) ctx.lineTo(P[i].x + ox, P[i].y + oy);
+    };
+    const fh = f.L * 0.03;
+    crest(fh * 0.55, fh * 0.8);
+    ctx.strokeStyle = "rgba(0,0,0,0.16)";
+    ctx.lineWidth = Math.max(1, f.L * 0.02);
+    ctx.stroke();
+    crest(0, 0);
+    ctx.strokeStyle = css(mix(f.fin, WHITE, 0.15), 0.7);
+    ctx.lineWidth = Math.max(0.8, f.L * 0.013);
     ctx.stroke();
 
     // eyes: small glossy domes with a catch-light
@@ -898,74 +978,198 @@
     ctx.fill();
   }
 
-  function drawRipples() {
-    for (const r of ripples) {
-      const k = r.age / r.life, R = r.age * r.speed, a = r.amp * Math.pow(1 - k, 1.6);
-      if (R < 1) continue;
-      ctx.lineWidth = 1.6 * S;
-      ctx.strokeStyle = css(mix(pal.sky, WHITE, 0.5), a * 0.4);
+  function drawRipple(r) {
+    const k = r.age / r.life, R = r.age * r.speed, a = r.amp * Math.pow(1 - k, 1.6);
+    if (R < 1) return;
+    ctx.lineWidth = 1.6 * S;
+    ctx.strokeStyle = css(mix(pal.sky, WHITE, 0.5), a * 0.4);
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, R, 0, TAU);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(0,0,0,${a * 0.16})`;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, Math.max(0.5, R - 2.5 * S), 0, TAU);
+    ctx.stroke();
+    if (r.amp > 0.6 && R > 14 * S) {
+      ctx.strokeStyle = css(WHITE, a * 0.18);
       ctx.beginPath();
-      ctx.arc(r.x, r.y, R, 0, TAU);
+      ctx.arc(r.x, r.y, R * 0.62, 0, TAU);
       ctx.stroke();
-      ctx.strokeStyle = `rgba(0,0,0,${a * 0.16})`;
-      ctx.beginPath();
-      ctx.arc(r.x, r.y, Math.max(0.5, R - 2.5 * S), 0, TAU);
-      ctx.stroke();
-      if (r.amp > 0.6 && R > 14 * S) {
-        ctx.strokeStyle = css(WHITE, a * 0.18);
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, R * 0.62, 0, TAU);
-        ctx.stroke();
-      }
     }
   }
 
-  function render() {
-    // water body
-    const g = ctx.createRadialGradient(W * 0.45, H * 0.4, 0, W / 2, H / 2, Math.hypot(W, H) * 0.62);
-    g.addColorStop(0, css(pal.mid));
-    g.addColorStop(1, css(pal.deep));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    if (bottom) ctx.drawImage(bottom, 0, 0, W, H);
+  // ---------- 3D view ----------
+  // The simulation lives on a flat W×H pond plane. A tilted camera looks into it, framed so the
+  // water fills the whole screen: the floor sits DEEP below the surface and fish swim in between.
+  const CAM = { e: 0.98, D: 1, K: 1, OX: 0, OY: 0 }; // e: how steeply the camera looks down (radians)
+  let DEEP = 70; // pond depth
 
-    // dappled light on the bottom
+  // camera-space position of a pond point (h = height above the water surface), before fitting
+  function camRaw(x, y, h) {
+    const se = Math.sin(CAM.e), ce = Math.cos(CAM.e);
+    const ry = h - CAM.D * se, rz = y - H / 2 - CAM.D * ce;
+    const depth = -ry * se - rz * ce;
+    return { x: (x - W / 2) / depth, y: (ry * ce - rz * se) / depth };
+  }
+  function proj(x, y, h = 0) {
+    const r = camRaw(x, y, h);
+    return { X: CAM.OX + r.x * CAM.K, Y: CAM.OY - r.y * CAM.K };
+  }
+  // draw in pond coordinates around (x, y, h): the local perspective as an affine transform
+  function at(x, y, h = 0) {
+    const p = proj(x, y, h), px = proj(x + 1, y, h), py = proj(x, y + 1, h);
+    const a = px.X - p.X, b = px.Y - p.Y, c = py.X - p.X, d = py.Y - p.Y;
+    ctx.setTransform(DPR * a, DPR * b, DPR * c, DPR * d, DPR * (p.X - a * x - c * y), DPR * (p.Y - b * x - d * y));
+  }
+  const flat = () => ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // where a screen point's line of sight meets the level h (unclamped)
+  function rayAt(X, Y, h) {
+    const se = Math.sin(CAM.e), ce = Math.cos(CAM.e);
+    const ax = (X - CAM.OX) / CAM.K, ay = -(Y - CAM.OY) / CAM.K;
+    const dy = -se + ay * ce, dz = -ce - ay * se;
+    const t = dy < -1e-6 ? (CAM.D * se - h) / -dy : 1e6;
+    return { x: ax * t + W / 2, y: CAM.D * ce + dz * t + H / 2 };
+  }
+  // where a screen point lands on the water surface
+  function toPond(X, Y) {
+    const q = rayAt(X, Y, 0);
+    return { x: clamp(q.x, 0, W), y: clamp(q.y, 0, H) };
+  }
+  // the floor reaches past every screen edge, so the basin walls never show
+  const FLOOR = { x0: 0, x1: 0, y0: 0, y1: 0 };
+  // fish hang between the floor and the surface (apparent depth, as water makes things look shallower)
+  const fishH = (f) => -(0.12 + f.depth * 0.78) * DEEP;
+
+  // Frame the pond so its far edge spans the screen at the top and its near edge reaches the bottom.
+  // The tilt is solved for the screen's shape; only slivers at the bottom corners fall off-screen.
+  function fitCamera() {
+    CAM.D = 1.9 * Math.max(W, H);
+    const pad = 3; // a little overscan so no edge ever peeks in
+    const measure = (e) => {
+      CAM.e = e;
+      CAM.K = 1;
+      const a = camRaw(0, 0, 0), b = camRaw(W, 0, 0), far = camRaw(W / 2, 0, 0), near = camRaw(W / 2, H, 0);
+      return { kw: (W + pad * 2) / (b.x - a.x), span: far.y - near.y };
+    };
+    // the on-screen height grows with the tilt up to a point: find the gentlest tilt that fills it
+    let lo = 0.75, hi = 1.3;
+    const fills = (e) => { const m = measure(e); return m.span * m.kw >= H + pad * 2; };
+    if (fills(lo)) hi = lo;
+    else if (fills(hi)) for (let i = 0; i < 28; i++) { const mid = (lo + hi) / 2; if (fills(mid)) hi = mid; else lo = mid; }
+    const m = measure(hi);
+    CAM.K = Math.max(m.kw, (H + pad * 2) / m.span); // whichever way is tighter, cover it
+    CAM.OX = W / 2;
+    CAM.OY = -pad + camRaw(W / 2, 0, 0).y * CAM.K;
+    DEEP = 70 * S;
+    const hf = -DEEP * 1.1, c = [[0, 0], [W, 0], [W, H], [0, H]].map(([X, Y]) => rayAt(X, Y, hf));
+    FLOOR.x0 = Math.min(0, ...c.map((q) => q.x)) - 20;
+    FLOOR.x1 = Math.max(W, ...c.map((q) => q.x)) + 20;
+    FLOOR.y0 = Math.min(0, ...c.map((q) => q.y)) - 20;
+    FLOOR.y1 = Math.max(H, ...c.map((q) => q.y)) + 20;
+  }
+
+  // is a pond point comfortably inside the visible screen?
+  function seen(x, y, m = 0) {
+    const p = proj(x, y, 0);
+    return p.X > m && p.X < W - m && p.Y > m && p.Y < H - m;
+  }
+
+  // a closed outline of the pond rectangle at height h (used for the water surface and the clip)
+  function rectPath(h) {
+    const a = proj(0, 0, h), b = proj(W, 0, h), c = proj(W, H, h), d = proj(0, H, h);
+    ctx.beginPath();
+    ctx.moveTo(a.X, a.Y); ctx.lineTo(b.X, b.Y); ctx.lineTo(c.X, c.Y); ctx.lineTo(d.X, d.Y);
+    ctx.closePath();
+    return { top: Math.min(a.Y, b.Y), bottom: Math.max(c.Y, d.Y) };
+  }
+
+  function drawGround() {
+    ctx.fillStyle = css(pal.deep);
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // the pond floor in perspective: base colour, then the pebble texture drawn row by row
+  // (exact for this camera, since rows across the pond stay level on screen)
+  function drawBasin() {
+    const hf = -DEEP * 1.1, F = FLOOR;
+    const a = proj(F.x0, F.y0, hf), b = proj(F.x1, F.y0, hf), c = proj(F.x1, F.y1, hf), d = proj(F.x0, F.y1, hf);
+    const fg = ctx.createLinearGradient(0, a.Y, 0, c.Y);
+    fg.addColorStop(0, css(mix(pal.deep, pal.mid, 0.35)));
+    fg.addColorStop(1, css(pal.mid));
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(a.X, a.Y); ctx.lineTo(b.X, b.Y); ctx.lineTo(c.X, c.Y); ctx.lineTo(d.X, d.Y);
+    ctx.closePath();
+    ctx.fill();
+    if (bottom) {
+      const rows = 260, span = F.y1 - F.y0;
+      for (let i = 0; i < rows; i++) {
+        const y = F.y0 + (span * i) / rows, y2 = F.y0 + (span * (i + 1)) / rows;
+        const l = proj(F.x0, y, hf), r = proj(F.x1, y, hf), n = proj(F.x0, y2, hf);
+        if (n.Y < -2 || l.Y > H + 2) continue;
+        ctx.drawImage(bottom, 0, (bottom.height * i) / rows, bottom.width, bottom.height / rows, l.X, l.Y, r.X - l.X, n.Y - l.Y + 0.6);
+      }
+    }
+    // dappled light on the floor
     ctx.globalCompositeOperation = "screen";
     for (const l of lights) {
       const x = (l.x + Math.sin(time * l.s + l.p) * 0.08) * W, y = (l.y + Math.cos(time * l.s * 0.8 + l.p) * 0.08) * H;
       const r = l.r * Math.min(W, H) * (1 + 0.15 * Math.sin(time * 0.5 + l.p));
+      at(x, y, hf);
       const lg = ctx.createRadialGradient(x, y, 0, x, y, r);
       lg.addColorStop(0, css(pal.light, pal.lightA));
       lg.addColorStop(1, css(pal.light, 0));
       ctx.fillStyle = lg;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
+    flat();
     ctx.globalCompositeOperation = "source-over";
+  }
 
-    for (const f of fish) fishShadow(f);
+  // the surface: water tint, then more reflection toward the far side (Fresnel), like real water
+  function drawSurfaceSheen() {
+    const r = rectPath(0);
+    const g = ctx.createLinearGradient(0, r.top, 0, r.bottom);
+    const sky = mix(pal.sky, pal.mid, 0.35), k = 1 - rainK * 0.35;
+    g.addColorStop(0, css(sky, 0.5 * k));
+    g.addColorStop(0.35, css(sky, 0.16 * k));
+    g.addColorStop(1, css(pal.mid, 0.04));
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  function render() {
+    flat();
+    drawGround();
+
+    // everything below the surface is seen through the pond's opening
+    ctx.save();
+    rectPath(0);
+    ctx.clip();
+    drawBasin();
+    const hf = -DEEP * 1.1;
+    for (const f of fish) { at(f.x, f.y, hf); fishShadow(f); }
     const order = fish.slice().sort((a, b) => b.depth - a.depth);
-    for (const f of order) drawFish(f);
+    for (const f of order) { at(f.x, f.y, fishH(f)); drawFish(f); }
+    for (const p of food) if (p.land <= 0 && p.sink > 0.05) { at(p.x, p.y, -p.sink * DEEP * 0.6); drawFood(p); }
+    flat();
+    drawSurfaceSheen();
+    ctx.restore();
 
-    for (const p of food) if (p.land <= 0) drawFood(p);
-    for (const p of petals) if (p.h <= 0) drawPetal(p);
-    for (const p of pads) drawPad(p);
-    drawRipples();
-    for (const p of petals) if (p.h > 0) drawPetal(p);
+    // on the surface
+    for (const p of food) if (p.land <= 0 && p.sink <= 0.05) { at(p.x, p.y, 0); drawFood(p); }
+    for (const p of petals) if (p.h <= 0) { at(p.x, p.y, 0); drawPetal(p); }
+    for (const p of pads) { at(p.x, p.y, 0); drawPad(p); }
+    for (const r of ripples) { at(r.x, r.y, 0); drawRipple(r); }
+    for (const p of petals) if (p.h > 0) { at(p.x, p.y, p.h * 160 * S); drawPetal(p); }
+    flat();
 
-    // rain greys the light
+    // rain greys the water
     if (rainK > 0.01) {
+      rectPath(0);
       ctx.fillStyle = `rgba(30,40,52,${0.22 * rainK})`;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fill();
     }
-
-    // sky reflected on the surface, sliding slowly
-    const sx = Math.sin(time * 0.05) * W * 0.25;
-    const sg = ctx.createLinearGradient(sx, 0, W * 0.6 + sx, H);
-    sg.addColorStop(0, css(pal.sky, 0));
-    sg.addColorStop(0.45, css(pal.sky, pal.skyA * (1 - rainK * 0.5)));
-    sg.addColorStop(0.7, css(pal.sky, 0));
-    ctx.fillStyle = sg;
-    ctx.fillRect(0, 0, W, H);
 
     // sun glitter by day, a wavering moon by night
     const glitter = (1 - nightK) * (1 - rainK * 0.7);
@@ -974,15 +1178,18 @@
         const a = Math.pow(Math.max(0, Math.sin(time * s.s + s.p)), 10) * 0.7 * glitter;
         if (a < 0.02) continue;
         const x = (s.x + Math.sin(time * 0.03 + s.p) * 0.02) * W, y = (s.y + Math.cos(time * 0.025 + s.p) * 0.02) * H, r = 2.2 * S;
+        at(x, y, 0);
         ctx.fillStyle = css(mix(pal.light, WHITE, 0.5), a);
         ctx.beginPath();
         ctx.ellipse(x, y, r * 2.2, r * 0.6, 0, 0, TAU);
         ctx.ellipse(x, y, r * 0.6, r * 1.6, 0, 0, TAU);
         ctx.fill();
       }
+      flat();
     }
     if (nightK > 0.02) {
       const mx = W * 0.74, my = H * 0.3;
+      at(mx, my, 0);
       const mg = ctx.createRadialGradient(mx, my, 0, mx, my, 120 * S);
       mg.addColorStop(0, `rgba(220,232,255,${0.12 * nightK})`);
       mg.addColorStop(1, "rgba(220,232,255,0)");
@@ -995,12 +1202,13 @@
         ctx.ellipse(mx + Math.sin(time * 0.9 + j * 1.7) * 6 * S, my + j * 9 * S, Math.max(1, w), 2.6 * S, 0, 0, TAU);
         ctx.fill();
       }
-      // fireflies drift above the water
+      // fireflies drift in the air above the water
       ctx.globalCompositeOperation = "lighter";
       for (const fl of flies) {
         const x = (fl.x + Math.sin(time * 0.07 * fl.s + fl.p) * 0.12) * W;
         const y = (fl.y + Math.cos(time * 0.05 * fl.s + fl.p * 2) * 0.1) * H;
         const a = nightK * (0.35 + 0.65 * Math.pow(Math.max(0, Math.sin(time * fl.s * 1.6 + fl.p)), 3)) * (1 - rainK);
+        at(x, y, (30 + fl.s * 40 + Math.sin(time * 0.6 + fl.p) * 10) * S);
         const fg = ctx.createRadialGradient(x, y, 0, x, y, 16 * S);
         fg.addColorStop(0, `rgba(230,255,150,${0.55 * a})`);
         fg.addColorStop(0.25, `rgba(190,240,110,${0.22 * a})`);
@@ -1009,12 +1217,13 @@
         ctx.fillRect(x - 16 * S, y - 16 * S, 32 * S, 32 * S);
       }
       ctx.globalCompositeOperation = "source-over";
+      flat();
     }
 
-    // banks: darken the edges
-    const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.hypot(W, H) * 0.6);
-    v.addColorStop(0, css(pal.deep, 0));
-    v.addColorStop(1, css(mix(pal.deep, [0, 0, 0], 0.4), 0.8));
+    // a soft vignette
+    const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.hypot(W, H) * 0.62);
+    v.addColorStop(0, "rgba(0,0,0,0)");
+    v.addColorStop(1, `rgba(0,0,0,${0.35 + pal.dim * 0.3})`);
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, W, H);
   }
@@ -1060,6 +1269,7 @@
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    fitCamera();
     makeBottom();
     // keep everything where it was, proportionally
     const kx = W / oldW, ky = H / oldH;
@@ -1083,7 +1293,7 @@
   }
 
   if (new URLSearchParams(location.search).has("debug")) {
-    window.__pond = { fish, food, pads, ripples, petals, opts, update, render, dropFood, sprinkle, ptr, get call() { return call; }, set call(v) { call = v; } };
+    window.__pond = { pose, P, SEG, fish, food, pads, ripples, petals, opts, update, render, dropFood, sprinkle, ptr, proj, toPond, rayAt, FLOOR, CAM, fishH, seen, get call() { return call; }, set call(v) { call = v; } };
   }
 
   resize();

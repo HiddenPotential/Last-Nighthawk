@@ -1,12 +1,12 @@
-// Places: switch between the orb room, the koi pond, the sand garden, the lantern lake, the wooden fish, the bamboo grove and the rainy window.
+// Places: switch between the orb room, the koi pond, the sand garden, the lantern lake, the wooden fish, the bamboo grove, the rainy window and the hearth.
 // Each place's elements carry data-for="<place>"; the rest fade out (class "away").
-// game.js, pond.js, sand.js, lanterns.js, woodfish.js, bamboo.js and window.js read document.body.dataset.place and pause while away.
+// game.js, pond.js, sand.js, lanterns.js, woodfish.js, bamboo.js, window.js and hearth.js read document.body.dataset.place and pause while away.
 (() => {
   "use strict";
   const KEY = "drift-place";
-  const PLACES = ["orbs", "pond", "sand", "lanterns", "woodfish", "bamboo", "window"];
-  const CHIME = { orbs: [9, 12], pond: [7, 10], sand: [5, 8], lanterns: [6, 11], woodfish: [4, 9], bamboo: [7, 12], window: [8, 13] };
-  const THEME_COLOR = { pond: "#06211f", sand: "#cfc4ae", lanterns: "#0b0c26", woodfish: "#1d0e09", bamboo: "#16200f", window: "#0b1028" };
+  const PLACES = ["orbs", "pond", "sand", "lanterns", "woodfish", "bamboo", "window", "hearth"];
+  const CHIME = { orbs: [9, 12], pond: [7, 10], sand: [5, 8], lanterns: [6, 11], woodfish: [4, 9], bamboo: [7, 12], window: [8, 13], hearth: [5, 10] };
+  const THEME_COLOR = { pond: "#06211f", sand: "#cfc4ae", lanterns: "#0b0c26", woodfish: "#1d0e09", bamboo: "#16200f", window: "#0b1028", hearth: "#140b07" };
 
   let place = "orbs";
   try { place = localStorage.getItem(KEY) || "orbs"; } catch (_) { /* storage unavailable */ }
