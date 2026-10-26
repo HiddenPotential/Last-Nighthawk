@@ -17,7 +17,7 @@ Then open http://localhost:5517. Headphones recommended. `server.py` serves the 
 The switcher in the top-left corner moves between calm places. Each one remembers its own settings, and sound and music carry across. Whichever place you're not looking at pauses.
 
 - **Orbs**: the glossy orb room described below.
-- **Pond**: a top-down koi pond (see [Pond](#pond)).
+- **Deep**: glowing jellyfish in the dark ocean (see [Deep](#deep)).
 - **Sand**: a top-down zen sand garden (see [Sand](#sand)).
 - **Lanterns**: a night lake where you light paper lanterns (see [Lanterns](#lanterns)).
 - **Muyu**: a wooden fish in a candlelit temple (see [Wooden fish](#wooden-fish)).
@@ -59,18 +59,19 @@ Melodies are short two-bar motifs answered by a varied repeat, chords move throu
 
 Each orb's chime pitch comes from its size (bigger orbs are lower) on a pentatonic scale, so any collision sounds pleasant. Settings are remembered in `localStorage`.
 
-## Pond
+## Deep
 
-Koi of different varieties (kohaku, sanke, ogon, tancho, showa and more) glide under lily pads and lotus flowers, over a pebbly bottom with dappled light. Petals drift down onto the water now and then.
+The dark open ocean. Jellyfish drift through it, each bell squeezing to push itself along and then gliding, long tentacles and frilly arms trailing behind. Far ones are smaller and fainter, deeper in the blue. Light shafts fall from the surface far above, sea snow sinks slowly, bubbles wobble up now and then, and once in a while you hear a whale somewhere far away.
 
-| Do this            | What happens                                                        |
-| ------------------ | ------------------------------------------------------------------- |
-| Tap the water      | Drop a pinch of food; hungry koi race up to the surface to eat it   |
-| Hold on the water  | The koi gather and circle your finger, nibbling at it; drag to lead them |
-| Swipe fast         | Stir the water: ripples spread, lily pads drift, nearby koi dart away |
-| <kbd>Space</kbd>   | Scatter food across the pond (same as **Feed**)                     |
+| Do this                  | What happens                                                       |
+| ------------------------ | ------------------------------------------------------------------ |
+| Tap the water            | Scatter a cloud of glowing plankton                                |
+| Tap a jellyfish          | It lights up and darts away with a strong pulse                    |
+| Drag                     | Stir a current: jellies drift with it, tentacles stream, plankton swirls |
+| Hold                     | A soft light: jellyfish turn and swim toward it and plankton gathers around it |
+| <kbd>Space</kbd>         | A stream of bubbles                                                |
 
-Koi get hungry over time and ignore food once they're full, and they grow a little each time they eat. The bar has **Feed**, **Rain** (rain rings the surface and you hear it), **time of day** (Day, Dusk, Night with a moon reflection and fireflies), music and sound.
+The bar has **Add jelly** (another one rises from below, up to 16), **Bubbles**, the **glow** colours (Aurora, Ember, Moon), music and sound. You hear the deep hum of the water, a soft push as nearby bells pulse, a rush when you stir it, bubbles, and the whale.
 
 ## Sand
 
@@ -159,7 +160,7 @@ A windowsill on a rainy evening, a mug of tea steaming on the sill, blurred ligh
 | Hold, then drag            | Breathe on the glass to fog it up, then draw in the fog with your finger |
 | Tap                        | Tap the glass: a soft tink, and nearby drops shiver loose and run |
 
-The bar has the **rain** (Drizzle, Rain, or Storm with distant lightning and thunder), the **view** (City lights, Forest, Dusk), **fog** on or off, music and sound. You hear the rain outside, drops ticking on the glass, and a soft swish when you wipe. The settings are remembered.
+The bar has the **rain** (Drizzle, Rain, or Storm with distant lightning and thunder), the **view** (City lights, Forest, Dusk), a **fog** slider (from clear glass, through a light misting, to a thick fog that clouds the whole pane), music and sound. You hear the rain outside, drops ticking on the glass, and a soft swish when you wipe. The settings are remembered.
 
 ## Hearth
 
@@ -181,7 +182,7 @@ The bar has **Add log**, **Poke**, **Keep it going** (adds a log on its own when
 - `index.html`: page and controls
 - `style.css`: layout and the frosted control bar
 - `game.js`: physics, orb rendering and Web Audio sound; also shares its audio engine with the other places as `window.Zen`
-- `pond.js`: the koi pond
+- `deep.js`: the deep ocean
 - `sand.js`: the sand garden
 - `lanterns.js`: the lantern lake
 - `woodfish.js`: the wooden fish
@@ -192,4 +193,4 @@ The bar has **Add log**, **Poke**, **Keep it going** (adds a log on its own when
 - `ambience.js`: the ambient soundscapes
 - `server.py`: serves the game and stores lantern quotes in `quotes.json` (not checked in)
 
-Add `?debug` to the URL to get `window.__drift`, `window.__pond`, `window.__sand`, `window.__lanterns`, `window.__woodfish`, `window.__bamboo`, `window.__window` and `window.__hearth` in the console for testing.
+Add `?debug` to the URL to get `window.__drift`, `window.__deep`, `window.__sand`, `window.__lanterns`, `window.__woodfish`, `window.__bamboo`, `window.__window` and `window.__hearth` in the console for testing.

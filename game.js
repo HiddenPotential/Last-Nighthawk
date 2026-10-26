@@ -2314,7 +2314,7 @@
     requestAnimationFrame(frame);
   }
 
-  // shared with the other places (pond.js): one audio engine and one set of sound/music settings
+  // shared with the other places: one audio engine and one set of sound/music settings
   window.Zen = {
     settings, saveSettings, syncUi, ensureAudio, setSound, setMusic, audioOk,
     output, noise, bell, plip, pluck, noteFreq, rand, clamp, lerp,

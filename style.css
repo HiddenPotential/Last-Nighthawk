@@ -12,7 +12,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#c, #pond, #sand, #lanterns, #woodfish, #bamboo, #pane, #hearth {
+#c, #deep, #sand, #lanterns, #woodfish, #bamboo, #pane, #hearth {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -183,7 +183,7 @@ html, body {
   .bar { opacity: 0.8; }
 }
 
-#pond { cursor: pointer; }
+#deep { cursor: pointer; }
 
 /* ---------- Places ---------- */
 [hidden] { display: none !important; }
@@ -229,7 +229,7 @@ html, body {
 #places button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.16); }
 #places button:focus-visible { outline: 2px solid rgba(155, 180, 255, 0.7); outline-offset: 1px; }
 
-#pond-title h1 { text-shadow: 0 0 30px #7fe0c466; }
+#deep-title h1 { text-shadow: 0 0 30px rgba(110, 230, 255, 0.55); }
 
 @media (max-width: 520px) {
   #places .lbl { display: none; }

@@ -16,11 +16,12 @@
   const KEY = "drift-window-v1";
   const RAINS = [{ name: "Drizzle", rate: 45, big: 0.05, roar: 0.025 }, { name: "Rain", rate: 130, big: 0.08, roar: 0.055 }, { name: "Storm", rate: 280, big: 0.12, roar: 0.095 }];
   const VIEWS = ["City", "Forest", "Dusk"];
-  const opts = { rain: 1, view: 0, fog: true };
+  const opts = { rain: 1, view: 0, fog: 0.4 }; // fog: 0 is clear glass, 0.4 a normal misting, 1 a thick fog
   try { Object.assign(opts, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (_) { /* storage unavailable */ }
   opts.rain = clamp(opts.rain | 0, 0, RAINS.length - 1);
   opts.view = clamp(opts.view | 0, 0, VIEWS.length - 1);
-  opts.fog = opts.fog !== false;
+  // older saves stored fog as on/off
+  opts.fog = opts.fog === false ? 0 : opts.fog === true || opts.fog == null ? 0.4 : clamp(+opts.fog || 0, 0, 1);
   const saveOpts = () => { try { localStorage.setItem(KEY, JSON.stringify(opts)); } catch (_) { /* ignore */ } };
   const here = () => document.body.dataset.place === "window";
 
@@ -96,7 +97,8 @@
   // bottom), a mask of where you've wiped (it fades, so the fog creeps back), and your breath
   const FOG_SCALE = 0.33;
   let fogTarget = null, wiped = null, wipedx = null, breath = null, breathx = null, comp = null, compx = null;
-  let fogLevel = opts.fog ? 1 : 0;
+  const fogFor = (amt) => amt * 2.5; // 1 is the classic misting; above that the glass clouds over
+  let fogLevel = fogFor(opts.fog);
   const layer = (fw, fh) => { const c = document.createElement("canvas"); c.width = fw; c.height = fh; return [c, c.getContext("2d")]; };
   function makeFog() {
     const fw = Math.max(1, Math.round(W * FOG_SCALE)), fh = Math.max(1, Math.round(H * FOG_SCALE));
@@ -187,7 +189,19 @@
 
   function composeFog() {
     compx.clearRect(0, 0, comp.width, comp.height);
-    if (fogLevel > 0.01) { compx.globalAlpha = fogLevel; compx.drawImage(fogTarget, 0, 0); compx.globalAlpha = 1; }
+    if (fogLevel > 0.01) {
+      // thicker fog: stack the condensation pattern, and past the classic level add an even veil
+      // so even the top of the pane clouds over
+      if (fogLevel > 1) {
+        compx.fillStyle = css(FOG_TINT[opts.view], Math.min(0.5, (fogLevel - 1) * 0.2));
+        compx.fillRect(0, 0, comp.width, comp.height);
+      }
+      for (let a = fogLevel; a > 0.01; a -= 1) {
+        compx.globalAlpha = Math.min(1, a);
+        compx.drawImage(fogTarget, 0, 0);
+      }
+      compx.globalAlpha = 1;
+    }
     compx.drawImage(breath, 0, 0);
     compx.globalCompositeOperation = "destination-out";
     compx.drawImage(wiped, 0, 0);
@@ -429,7 +443,7 @@
     }
 
     // condensation creeps back over wiped glass, and breath slowly clears
-    fogLevel = lerp(fogLevel, opts.fog ? 1 : 0, Math.min(1, dt * 0.8));
+    fogLevel = lerp(fogLevel, fogFor(opts.fog), Math.min(1, dt * 3));
     // (in batches: tiny per-frame fades would round away in the canvas's 8-bit alpha)
     fadeAcc += dt;
     if (wipedx && fadeAcc > 0.4) { fade(wipedx, Math.min(1, fadeAcc * 0.045)); fade(breathx, Math.min(1, fadeAcc * 0.02)); fadeAcc = 0; }
@@ -581,8 +595,8 @@
   function syncUi() {
     $("pane-rain-lbl").textContent = RAINS[opts.rain].name;
     $("pane-view-lbl").textContent = VIEWS[opts.view];
-    $("pane-fog-lbl").textContent = opts.fog ? "Fog on" : "Fog off";
-    $("pane-fog").setAttribute("aria-pressed", opts.fog);
+    $("pane-fog-lbl").textContent = opts.fog < 0.005 ? "Clear" : `Fog ${Math.round(opts.fog * 100)}%`;
+    $("pane-fog").value = opts.fog;
     $("pane-sound-ico").textContent = Z.settings.sound ? "♪" : "–";
     $("pane-sound-lbl").textContent = Z.settings.sound ? "Sound on" : "Sound off";
     $("pane-music-lbl").textContent = Z.settings.music ? "Music on" : "Music off";
@@ -591,7 +605,7 @@
   window.addEventListener("zen-settings", syncUi);
   $("pane-rain").addEventListener("click", () => { opts.rain = (opts.rain + 1) % RAINS.length; saveOpts(); syncUi(); Z.ensureAudio(); startLoops(); });
   $("pane-view").addEventListener("click", () => { opts.view = (opts.view + 1) % VIEWS.length; puffTint = null; saveOpts(); syncUi(); renderView(); makeFog(); });
-  $("pane-fog").addEventListener("click", () => { opts.fog = !opts.fog; saveOpts(); syncUi(); });
+  $("pane-fog").addEventListener("input", (e) => { opts.fog = clamp(+e.target.value, 0, 1); saveOpts(); syncUi(); });
   $("pane-music").addEventListener("click", () => Z.setMusic(!Z.settings.music));
   $("pane-sound").addEventListener("click", () => Z.setSound(!Z.settings.sound));
 
